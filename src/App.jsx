@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import * as Tone from "tone";
 
 const noteMap = {
@@ -9,6 +9,9 @@ const noteMap = {
 
 const SongClock = () => {
   const [time, setTime] = useState(new Date());
+  const hourRef = useRef(time.getHours());
+  const referenceSynthRef = useRef(null);
+  const hourSynthRef = useRef(null);
 
   useEffect(() => {
     const updateClock = () => {
@@ -19,16 +22,31 @@ const SongClock = () => {
   }, []);
 
   useEffect(() => {
+    // Start audio context and create synths once
     Tone.start();
-    const referenceSynth = new Tone.Synth({ oscillator: { type: "sine" } }).toDestination();
-    const hourSynth = new Tone.Synth({ oscillator: { type: "sine" } }).toDestination();
 
-    referenceSynth.triggerAttack("C3");
-    hourSynth.triggerAttack(noteMap[time.getHours() % 12 || 12]);
+    if (!referenceSynthRef.current) {
+      referenceSynthRef.current = new Tone.Synth({ oscillator: { type: "sine" } }).toDestination();
+      referenceSynthRef.current.triggerAttack("C3");
+    }
+
+    if (!hourSynthRef.current) {
+      hourSynthRef.current = new Tone.Synth({ oscillator: { type: "sine" } }).toDestination();
+      hourSynthRef.current.triggerAttack(noteMap[time.getHours() % 12 || 12]);
+      hourRef.current = time.getHours();
+    } else if (hourRef.current !== time.getHours()) {
+      hourSynthRef.current.triggerRelease();
+      hourSynthRef.current = new Tone.Synth({ oscillator: { type: "sine" } }).toDestination();
+      hourSynthRef.current.triggerAttack(noteMap[time.getHours() % 12 || 12]);
+      hourRef.current = time.getHours();
+    }
 
     return () => {
-      referenceSynth.triggerRelease();
-      hourSynth.triggerRelease();
+      // Cleanup not done on every second, only on unmount
+      return () => {
+        referenceSynthRef.current?.triggerRelease();
+        hourSynthRef.current?.triggerRelease();
+      };
     };
   }, [time]);
 
