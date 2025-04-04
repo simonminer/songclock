@@ -1,35 +1,47 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from "react";
+import * as Tone from "tone";
 
-function App() {
-  const [count, setCount] = useState(0)
+const noteMap = {
+  1: "C3", 2: "D3", 3: "E3", 4: "F3", 5: "G3",
+  6: "A3", 7: "B3", 8: "C4", 9: "D4", 10: "E4",
+  11: "F4", 12: "G4"
+};
+
+const SongClock = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const updateClock = () => {
+      setTime(new Date());
+    };
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    Tone.start();
+    const referenceSynth = new Tone.Synth({ oscillator: { type: "sine" } }).toDestination();
+    const hourSynth = new Tone.Synth({ oscillator: { type: "sine" } }).toDestination();
+
+    referenceSynth.triggerAttack("C3");
+    hourSynth.triggerAttack(noteMap[time.getHours() % 12 || 12]);
+
+    return () => {
+      referenceSynth.triggerRelease();
+      hourSynth.triggerRelease();
+    };
+  }, [time]);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div style={{ textAlign: "center", padding: "20px" }}>
+      <h1>SongClock</h1>
+      <h2>{time.toLocaleTimeString()}</h2>
+      <p>Reference Note: C3 (Sine Wave)</p>
+      <p>Hour Note: {noteMap[time.getHours() % 12 || 12]} (Sine Wave)</p>
+      {/* Placeholder for sheet music representation */}
+    </div>
+  );
+};
 
-export default App
+export default SongClock;
+
