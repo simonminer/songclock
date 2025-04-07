@@ -9,6 +9,7 @@ const noteMap = {
 
 const SongClock = () => {
   const [time, setTime] = useState(new Date());
+  const [isPlaying, setIsPlaying] = useState(true); // State for starting/stopping
   const hourRef = useRef(time.getHours());
   const referenceSynthRef = useRef(null);
   const hourSynthRef = useRef(null);
@@ -27,14 +28,14 @@ const SongClock = () => {
 
     if (!referenceSynthRef.current) {
       referenceSynthRef.current = new Tone.Synth({ oscillator: { type: "sine" } }).toDestination();
-      referenceSynthRef.current.triggerAttack("C3");
+      if (isPlaying) referenceSynthRef.current.triggerAttack("C3");
     }
 
     if (!hourSynthRef.current) {
-      hourSynthRef.current = new Tone.Synth({ oscillator: { type: "sine" } }).toDestination();
-      hourSynthRef.current.triggerAttack(noteMap[time.getHours() % 12 || 12]);
+      hourSynthRef.current = new Tone.Synth({ oscillator: { type: "triangle" } }).toDestination();
+      if (isPlaying) hourSynthRef.current.triggerAttack(noteMap[time.getHours() % 12 || 12]);
       hourRef.current = time.getHours();
-    } else if (hourRef.current !== time.getHours()) {
+    } else if (hourRef.current !== time.getHours() && isPlaying) {
       hourSynthRef.current.triggerRelease();
       hourSynthRef.current = new Tone.Synth({ oscillator: { type: "sine" } }).toDestination();
       hourSynthRef.current.triggerAttack(noteMap[time.getHours() % 12 || 12]);
@@ -48,7 +49,19 @@ const SongClock = () => {
         hourSynthRef.current?.triggerRelease();
       };
     };
-  }, [time]);
+  }, [time, isPlaying]);
+
+  const toggleSound = () => {
+    setIsPlaying((prev) => !prev); // Toggle play state
+    if (!isPlaying) {
+      // Restart sound when play is toggled on
+      referenceSynthRef.current.triggerAttack("C3");
+      hourSynthRef.current.triggerAttack(noteMap[time.getHours() % 12 || 12]);
+    } else {
+      referenceSynthRef.current.triggerRelease();
+      hourSynthRef.current.triggerRelease();
+    }
+  };
 
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
@@ -56,7 +69,9 @@ const SongClock = () => {
       <h2>{time.toLocaleTimeString()}</h2>
       <p>Reference Note: C3 (Sine Wave)</p>
       <p>Hour Note: {noteMap[time.getHours() % 12 || 12]} (Sine Wave)</p>
-      {/* Placeholder for sheet music representation */}
+      <button onClick={toggleSound}>
+        {isPlaying ? "Stop Sounds" : "Start Sounds"}
+      </button>
     </div>
   );
 };
