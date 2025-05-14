@@ -12,6 +12,7 @@ import SettingsModal from "@/components/settings-modal"
 import HelpModal from "@/components/help-modal"
 import { useAudioContext } from "@/components/audio-context-provider"
 import { Providers } from "./providers"
+import { trackButtonClick, trackKeyboardShortcut } from "@/utils/analytics"
 
 export default function SongClock() {
   // Running time state (for display and audio)
@@ -69,30 +70,34 @@ export default function SongClock() {
       if (e.key === "p" || e.key === "P") {
         e.preventDefault()
         togglePlay()
+        trackKeyboardShortcut("p", isPlaying ? "Pause" : "Play")
       }
 
       // Question mark to open help
       if (e.key === "?" || e.key === "/") {
         e.preventDefault()
         setIsHelpOpen(true)
+        trackKeyboardShortcut("?", "Open Help")
       }
 
       // Comma to open settings
       if (e.key === ",") {
         e.preventDefault()
         setIsSettingsOpen(true)
+        trackKeyboardShortcut(",", "Open Settings")
       }
 
       // 's' to toggle music staff
       if (e.key === "s" || e.key === "S") {
         e.preventDefault()
         setShowMusicStaff((prev) => !prev)
+        trackKeyboardShortcut("s", showMusicStaff ? "Hide Score" : "Show Score")
       }
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isSettingsOpen, isHelpOpen, isPlaying]) // Added isPlaying to the dependency array
+  }, [isSettingsOpen, isHelpOpen, isPlaying, showMusicStaff]) // Added showMusicStaff to the dependency array
 
   // Update time automatically
   useEffect(() => {
@@ -149,6 +154,9 @@ export default function SongClock() {
     const newIsPlaying = !isPlaying
     setIsPlaying(newIsPlaying)
 
+    // Track the event
+    trackButtonClick("Play/Pause", newIsPlaying ? "Play" : "Pause")
+
     // Announce state change to screen readers
     setAnnouncement(newIsPlaying ? "Sound on" : "Sound off")
   }
@@ -156,6 +164,9 @@ export default function SongClock() {
   const toggleMusicStaff = () => {
     const newShowMusicStaff = !showMusicStaff
     setShowMusicStaff(newShowMusicStaff)
+
+    // Track the event
+    trackButtonClick("Show/Hide Score", newShowMusicStaff ? "Show" : "Hide")
 
     // Announce state change to screen readers
     setAnnouncement(newShowMusicStaff ? "Score on" : "Score off")
@@ -411,7 +422,10 @@ export default function SongClock() {
               </Button>
               <Button
                 ref={helpButtonRef}
-                onClick={() => setIsHelpOpen(true)}
+                onClick={() => {
+                  setIsHelpOpen(true)
+                  trackButtonClick("Help", "Open")
+                }}
                 variant="outline"
                 className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                 aria-label="Open help"
@@ -421,7 +435,10 @@ export default function SongClock() {
               </Button>
               <Button
                 ref={settingsButtonRef}
-                onClick={() => setIsSettingsOpen(true)}
+                onClick={() => {
+                  setIsSettingsOpen(true)
+                  trackButtonClick("Settings", "Open")
+                }}
                 variant="outline"
                 className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                 aria-label="Open settings"
@@ -439,7 +456,10 @@ export default function SongClock() {
             {/* Clock Section - Converted to a button */}
             <button
               className="mx-4 flex w-auto flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 p-6 transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              onClick={togglePlay}
+              onClick={() => {
+                togglePlay()
+                trackButtonClick("Analog Clock Panel", isPlaying ? "Pause" : "Play")
+              }}
               aria-label={`Clock panel showing ${formatTwoDigits(displayHours)}:${formatTwoDigits(displayMinutes)}:${formatTwoDigits(displaySeconds)}. ${isPlaying ? "Pause" : "Play"} sound`}
               type="button"
             >
@@ -450,7 +470,7 @@ export default function SongClock() {
             </button>
 
             {/* Staff Toggle Button */}
-            <div className="mx-4 flex justify-start w-auto">
+            <div className="mx-4 flex justify-center w-auto">
               <Button
                 ref={staffToggleButtonRef}
                 onClick={toggleMusicStaff}
@@ -506,6 +526,7 @@ export default function SongClock() {
           isOpen={isSettingsOpen}
           onClose={() => {
             setIsSettingsOpen(false)
+            trackButtonClick("Settings", "Close")
             // Return focus to settings button when modal closes
             if (settingsButtonRef.current) {
               settingsButtonRef.current.focus()
@@ -533,6 +554,7 @@ export default function SongClock() {
           isOpen={isHelpOpen}
           onClose={() => {
             setIsHelpOpen(false)
+            trackButtonClick("Help", "Close")
             // Return focus to help button when modal closes
             if (helpButtonRef.current) {
               helpButtonRef.current.focus()

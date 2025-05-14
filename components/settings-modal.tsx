@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { KeyboardEvent } from "react"
+import { trackButtonClick } from "@/utils/analytics"
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -26,7 +27,7 @@ interface SettingsModalProps {
     reference: number
     hour: number
     minute: number
-    second: boolean
+    second: number
   }
   handleSoundVolumeChange: (component: keyof typeof soundVolumes, value: number[]) => void
   handleSliderKeyDown: (
@@ -138,6 +139,9 @@ export default function SettingsModal({
         ? Number.parseInt(localInputValues.seconds, 10) || 0
         : localInputValues.seconds
 
+    // Track the event
+    trackButtonClick("Set Time", `${hours}:${minutes}:${seconds}`)
+
     // Update the application time
     handleManualTimeChange("hours", hours.toString())
     handleManualTimeChange("minutes", minutes.toString())
@@ -167,6 +171,9 @@ export default function SettingsModal({
         newValue = currentValue === 0 ? 59 : currentValue - 1
       }
     }
+
+    // Track the event
+    trackButtonClick(`${field} ${increment ? "Increment" : "Decrement"}`, `${field}: ${newValue}`)
 
     // Update local input values
     setLocalInputValues((prev) => ({
@@ -254,6 +261,24 @@ export default function SettingsModal({
     }
   }, [isOpen, onClose])
 
+  // Enhanced toggle sound component with tracking
+  const handleToggleSoundComponent = (component: keyof typeof soundToggles) => {
+    trackButtonClick(`Toggle ${component}`, soundToggles[component] ? "Off" : "On")
+    toggleSoundComponent(component)
+  }
+
+  // Enhanced toggle time mode with tracking
+  const handleToggleTimeMode = () => {
+    trackButtonClick("Toggle Time Mode", useManualTime ? "Real Time" : "Manual Time")
+    toggleTimeMode()
+  }
+
+  // Enhanced reset to current time with tracking
+  const handleResetToCurrentTime = () => {
+    trackButtonClick("Reset to Current Time")
+    resetToCurrentTime()
+  }
+
   if (!isOpen) return null
 
   return (
@@ -273,7 +298,10 @@ export default function SettingsModal({
           </h1>
           <Button
             ref={initialFocusRef}
-            onClick={onClose}
+            onClick={() => {
+              onClose()
+              trackButtonClick("Settings Modal Close", "X Button")
+            }}
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-full hover:bg-white/10"
@@ -327,7 +355,10 @@ export default function SettingsModal({
                     value={[soundVolumes.reference]}
                     max={1}
                     step={0.01}
-                    onValueChange={(value) => handleSoundVolumeChange("reference", value)}
+                    onValueChange={(value) => {
+                      handleSoundVolumeChange("reference", value)
+                      trackButtonClick("Adjust Reference Volume", `${Math.round(value[0] * 100)}%`)
+                    }}
                     className="w-full focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 group-focus-visible:ring-2 group-focus-visible:ring-white group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-gray-900"
                     disabled={!soundToggles.reference}
                   />
@@ -335,7 +366,7 @@ export default function SettingsModal({
                 <Switch
                   id="reference-toggle"
                   checked={soundToggles.reference}
-                  onCheckedChange={() => toggleSoundComponent("reference")}
+                  onCheckedChange={() => handleToggleSoundComponent("reference")}
                   className="focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                   aria-label="Toggle reference tone"
                 />
@@ -381,7 +412,10 @@ export default function SettingsModal({
                     value={[soundVolumes.hour]}
                     max={1}
                     step={0.01}
-                    onValueChange={(value) => handleSoundVolumeChange("hour", value)}
+                    onValueChange={(value) => {
+                      handleSoundVolumeChange("hour", value)
+                      trackButtonClick("Adjust Hour Volume", `${Math.round(value[0] * 100)}%`)
+                    }}
                     className="w-full focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 group-focus-visible:ring-2 group-focus-visible:ring-white group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-gray-900"
                     disabled={!soundToggles.hour}
                   />
@@ -389,7 +423,7 @@ export default function SettingsModal({
                 <Switch
                   id="hour-toggle"
                   checked={soundToggles.hour}
-                  onCheckedChange={() => toggleSoundComponent("hour")}
+                  onCheckedChange={() => handleToggleSoundComponent("hour")}
                   className="focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                   aria-label="Toggle hour tone"
                 />
@@ -433,7 +467,10 @@ export default function SettingsModal({
                     value={[soundVolumes.minute]}
                     max={1}
                     step={0.01}
-                    onValueChange={(value) => handleSoundVolumeChange("minute", value)}
+                    onValueChange={(value) => {
+                      handleSoundVolumeChange("minute", value)
+                      trackButtonClick("Adjust Minute Volume", `${Math.round(value[0] * 100)}%`)
+                    }}
                     className="w-full focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 group-focus-visible:ring-2 group-focus-visible:ring-white group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-gray-900"
                     disabled={!soundToggles.minute}
                   />
@@ -441,7 +478,7 @@ export default function SettingsModal({
                 <Switch
                   id="minute-toggle"
                   checked={soundToggles.minute}
-                  onCheckedChange={() => toggleSoundComponent("minute")}
+                  onCheckedChange={() => handleToggleSoundComponent("minute")}
                   className="focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                   aria-label="Toggle minute tones"
                 />
@@ -485,7 +522,10 @@ export default function SettingsModal({
                     value={[soundVolumes.second]}
                     max={1}
                     step={0.01}
-                    onValueChange={(value) => handleSoundVolumeChange("second", value)}
+                    onValueChange={(value) => {
+                      handleSoundVolumeChange("second", value)
+                      trackButtonClick("Adjust Second Volume", `${Math.round(value[0] * 100)}%`)
+                    }}
                     className="w-full focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 group-focus-visible:ring-2 group-focus-visible:ring-white group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-gray-900"
                     disabled={!soundToggles.second}
                   />
@@ -493,7 +533,7 @@ export default function SettingsModal({
                 <Switch
                   id="second-toggle"
                   checked={soundToggles.second}
-                  onCheckedChange={() => toggleSoundComponent("second")}
+                  onCheckedChange={() => handleToggleSoundComponent("second")}
                   className="focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                   aria-label="Toggle second tones"
                 />
@@ -521,7 +561,10 @@ export default function SettingsModal({
                   value={[masterVolume]}
                   max={1}
                   step={0.01}
-                  onValueChange={(value) => setMasterVolume(value[0])}
+                  onValueChange={(value) => {
+                    setMasterVolume(value[0])
+                    trackButtonClick("Adjust Master Volume", `${Math.round(value[0] * 100)}%`)
+                  }}
                   className="w-full focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 group-focus-visible:ring-2 group-focus-visible:ring-white group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-gray-900"
                 />
               </div>
@@ -538,7 +581,7 @@ export default function SettingsModal({
               <Switch
                 id="manual-time-toggle"
                 checked={useManualTime}
-                onCheckedChange={toggleTimeMode}
+                onCheckedChange={handleToggleTimeMode}
                 aria-label="Toggle manual time control"
                 className="focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               />
@@ -672,7 +715,13 @@ export default function SettingsModal({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={applyTimeChanges}
+                  onClick={() => {
+                    applyTimeChanges()
+                    trackButtonClick(
+                      "Settings - Set Time",
+                      `${formatTwoDigits(localInputValues.hours)}:${formatTwoDigits(localInputValues.minutes)}:${formatTwoDigits(localInputValues.seconds)}`,
+                    )
+                  }}
                   className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                   aria-label="Set time to specified values"
                   disabled={!useManualTime}
@@ -684,7 +733,10 @@ export default function SettingsModal({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={resetToCurrentTime}
+                  onClick={() => {
+                    resetToCurrentTime()
+                    trackButtonClick("Settings - Reset Time", "Current Time")
+                  }}
                   className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                   aria-label="Reset to current time"
                   disabled={!useManualTime}
@@ -709,7 +761,10 @@ export default function SettingsModal({
         {/* Bottom close button */}
         <div className="mt-8 flex justify-center">
           <Button
-            onClick={onClose}
+            onClick={() => {
+              onClose()
+              trackButtonClick("Settings Modal Close", "Bottom Button")
+            }}
             variant="outline"
             size="lg"
             className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import IntervalLegend from "@/components/interval-legend"
+import { trackButtonClick } from "@/utils/analytics"
 
 interface HelpModalProps {
   isOpen: boolean
@@ -114,7 +115,10 @@ export default function HelpModal({ isOpen, onClose, customTitle }: HelpModalPro
           </h1>
           <Button
             ref={initialFocusRef}
-            onClick={onClose}
+            onClick={() => {
+              onClose()
+              trackButtonClick("Help Modal Close", "X Button")
+            }}
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-full hover:bg-white/10"
@@ -286,7 +290,10 @@ export default function HelpModal({ isOpen, onClose, customTitle }: HelpModalPro
         {/* Bottom close button */}
         <div className="mt-8 flex justify-center">
           <Button
-            onClick={onClose}
+            onClick={() => {
+              onClose()
+              trackButtonClick("Help Modal Close", "Bottom Button")
+            }}
             variant="outline"
             size="lg"
             className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
