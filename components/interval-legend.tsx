@@ -5,8 +5,12 @@ import { ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export default function IntervalLegend() {
-  const [isOpen, setIsOpen] = useState(false)
+interface IntervalLegendProps {
+  alwaysExpanded?: boolean
+}
+
+export default function IntervalLegend({ alwaysExpanded = false }: IntervalLegendProps) {
+  const [isOpen, setIsOpen] = useState(alwaysExpanded)
 
   const hourIntervals = [
     { hour: 1, interval: "Unison (C4)", description: "Same as reference tone" },
@@ -50,18 +54,22 @@ export default function IntervalLegend() {
   ]
 
   return (
-    <div className="w-full max-w-md rounded-lg border border-white/10 bg-white/5 p-4">
-      <Button
-        variant="ghost"
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between text-left"
-      >
-        <span className="text-lg font-medium">Interval Reference Guide</span>
-        {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-      </Button>
+    <div className="w-full rounded-lg border border-white/10 bg-white/5 p-4">
+      {!alwaysExpanded && (
+        <Button
+          variant="ghost"
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex w-full items-center justify-between text-left"
+        >
+          <span className="text-lg font-medium">Interval Reference Guide</span>
+          {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+        </Button>
+      )}
 
-      {isOpen && (
-        <Tabs defaultValue="hours" className="mt-4">
+      {alwaysExpanded && <h3 className="mb-4 text-lg font-medium">Interval Reference Guide</h3>}
+
+      {(isOpen || alwaysExpanded) && (
+        <Tabs defaultValue="hours" className={alwaysExpanded ? "" : "mt-4"}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="hours">Hour Intervals</TabsTrigger>
             <TabsTrigger value="minutes">Minute Notes</TabsTrigger>
@@ -69,20 +77,34 @@ export default function IntervalLegend() {
           </TabsList>
 
           <TabsContent value="hours" className="mt-2">
-            <div className="grid gap-2">
-              <div className="grid grid-cols-12 gap-2 border-b border-white/10 pb-2 text-xs font-medium text-gray-400">
-                <div className="col-span-2">Hour</div>
-                <div className="col-span-4">Interval</div>
-                <div className="col-span-6">Description</div>
-              </div>
-
-              {hourIntervals.map((item) => (
-                <div key={item.hour} className="grid grid-cols-12 gap-2 text-sm">
-                  <div className="col-span-2">{item.hour}:00</div>
-                  <div className="col-span-4">{item.interval}</div>
-                  <div className="col-span-6 text-gray-300">{item.description}</div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse" aria-labelledby="hour-intervals-heading">
+                <caption id="hour-intervals-heading" className="sr-only">
+                  Hour Intervals Reference
+                </caption>
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th scope="col" className="py-2 px-2 text-left">
+                      Hour
+                    </th>
+                    <th scope="col" className="py-2 px-2 text-left">
+                      Interval
+                    </th>
+                    <th scope="col" className="py-2 px-2 text-left">
+                      Description
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hourIntervals.map((item) => (
+                    <tr key={item.hour} className="border-b border-white/10">
+                      <td className="py-2 px-2">{item.hour}:00</td>
+                      <td className="py-2 px-2">{item.interval}</td>
+                      <td className="py-2 px-2 text-gray-300">{item.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </TabsContent>
 
@@ -91,20 +113,34 @@ export default function IntervalLegend() {
               The tens and ones digits of the minute each play their corresponding scale degree, alternating every
               second.
             </p>
-            <div className="grid gap-2">
-              <div className="grid grid-cols-12 gap-2 border-b border-white/10 pb-2 text-xs font-medium text-gray-400">
-                <div className="col-span-2">Digit</div>
-                <div className="col-span-4">Note</div>
-                <div className="col-span-6">Description</div>
-              </div>
-
-              {minuteIntervals.map((item) => (
-                <div key={item.digit} className="grid grid-cols-12 gap-2 text-sm">
-                  <div className="col-span-2">{item.digit}</div>
-                  <div className="col-span-4">{item.note}</div>
-                  <div className="col-span-6 text-gray-300">{item.description}</div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse" aria-labelledby="minute-notes-heading">
+                <caption id="minute-notes-heading" className="sr-only">
+                  Minute Notes Reference
+                </caption>
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th scope="col" className="py-2 px-2 text-left">
+                      Digit
+                    </th>
+                    <th scope="col" className="py-2 px-2 text-left">
+                      Note
+                    </th>
+                    <th scope="col" className="py-2 px-2 text-left">
+                      Description
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {minuteIntervals.map((item) => (
+                    <tr key={item.digit} className="border-b border-white/10">
+                      <td className="py-2 px-2">{item.digit}</td>
+                      <td className="py-2 px-2">{item.note}</td>
+                      <td className="py-2 px-2 text-gray-300">{item.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </TabsContent>
 
@@ -113,20 +149,34 @@ export default function IntervalLegend() {
               The tens and ones digits of the second each play their corresponding scale degree as pizzicato tones,
               alternating four times per second (0.25s each).
             </p>
-            <div className="grid gap-2">
-              <div className="grid grid-cols-12 gap-2 border-b border-white/10 pb-2 text-xs font-medium text-gray-400">
-                <div className="col-span-2">Digit</div>
-                <div className="col-span-4">Note</div>
-                <div className="col-span-6">Description</div>
-              </div>
-
-              {secondIntervals.map((item) => (
-                <div key={item.digit} className="grid grid-cols-12 gap-2 text-sm">
-                  <div className="col-span-2">{item.digit}</div>
-                  <div className="col-span-4">{item.note}</div>
-                  <div className="col-span-6 text-gray-300">{item.description}</div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse" aria-labelledby="second-notes-heading">
+                <caption id="second-notes-heading" className="sr-only">
+                  Second Notes Reference
+                </caption>
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th scope="col" className="py-2 px-2 text-left">
+                      Digit
+                    </th>
+                    <th scope="col" className="py-2 px-2 text-left">
+                      Note
+                    </th>
+                    <th scope="col" className="py-2 px-2 text-left">
+                      Description
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {secondIntervals.map((item) => (
+                    <tr key={item.digit} className="border-b border-white/10">
+                      <td className="py-2 px-2">{item.digit}</td>
+                      <td className="py-2 px-2">{item.note}</td>
+                      <td className="py-2 px-2 text-gray-300">{item.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </TabsContent>
         </Tabs>

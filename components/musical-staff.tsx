@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Renderer, Stave, StaveNote, Voice, Formatter, StaveConnector } from "vexflow"
+import { Renderer, Stave, StaveNote, Voice, Formatter } from "vexflow"
 
 interface MusicalStaffProps {
   hours: number
@@ -85,7 +85,7 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
 
       // Configure renderer
       const width = containerWidth
-      const height = 270 // Increased height to accommodate shifted legend
+      const height = 350 // Increased height to accommodate three staves
       renderer.resize(width, height)
       const context = renderer.getContext()
 
@@ -96,56 +96,93 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
 
       // Create staves
       const staveX = 10
-      const trebleStaveY = 40
-      const bassStaveY = 130
+      const secondStaveY = 40
+      const minuteStaveY = 140
+      const hourStaveY = 240
       const staveWidth = width - 20
 
-      // Create treble and bass staves
-      const trebleStave = new Stave(staveX, trebleStaveY, staveWidth)
-      trebleStave.addClef("treble").addTimeSignature("4/4")
-      trebleStave.setStyle({ strokeStyle: defaultColor, fillStyle: defaultColor })
+      // Create three staves
+      const secondStave = new Stave(staveX, secondStaveY, staveWidth)
+      secondStave.addClef("treble").addTimeSignature("4/4")
+      secondStave.setStyle({ strokeStyle: defaultColor, fillStyle: defaultColor })
 
-      const bassStave = new Stave(staveX, bassStaveY, staveWidth)
-      bassStave.addClef("bass").addTimeSignature("4/4")
-      bassStave.setStyle({ strokeStyle: defaultColor, fillStyle: defaultColor })
+      const minuteStave = new Stave(staveX, minuteStaveY, staveWidth)
+      minuteStave.addClef("treble").addTimeSignature("4/4")
+      minuteStave.setStyle({ strokeStyle: defaultColor, fillStyle: defaultColor })
 
-      // Connect the staves with a brace
-      const connector = new StaveConnector(trebleStave, bassStave)
-      connector.setType(StaveConnector.type.BRACE)
-      connector.setContext(context)
+      const hourStave = new Stave(staveX, hourStaveY, staveWidth)
+      hourStave.addClef("bass").addTimeSignature("4/4")
+      hourStave.setStyle({ strokeStyle: defaultColor, fillStyle: defaultColor })
 
       // Draw the staves
-      trebleStave.setContext(context).draw()
-      bassStave.setContext(context).draw()
-      connector.draw()
+      secondStave.setContext(context).draw()
+      minuteStave.setContext(context).draw()
+      hourStave.setContext(context).draw()
+
+      // Define label positions for vertical alignment
+      const secondLabelY = secondStaveY + 100
+      const minuteLabelY = minuteStaveY + 100
+      const hourLabelY = hourStaveY + 100
+
+      // Add staff labels below each staff at the left end with note names and numeric values
+      // Second staff label (blue) with current seconds value
+      context.save()
+      context.fillStyle = secondColor
+      context.font = "bold 14px Arial"
+      context.fillText("Seconds ♬", staveX, secondLabelY)
+      // Add seconds value underneath
+      context.font = "12px Arial"
+      context.fillText(`${seconds}s`, staveX, secondLabelY + 20)
+      context.restore()
+
+      // Minute staff label (green) with current minutes value
+      context.save()
+      context.fillStyle = minuteColor
+      context.font = "bold 14px Arial"
+      context.fillText("Minutes ♩", staveX, minuteLabelY)
+      // Add minutes value underneath
+      context.font = "12px Arial"
+      context.fillText(`${minutes}m`, staveX, minuteLabelY + 20)
+      context.restore()
+
+      // Hour staff label (red) with hour number
+      context.save()
+      context.fillStyle = hourColor
+      context.font = "bold 14px Arial"
+      context.fillText(`Hour ○ (${hours})`, staveX, hourLabelY)
+      // Add hour value underneath
+      context.font = "12px Arial"
+      context.fillText(`${hours}h`, staveX, hourLabelY + 20)
+
+      // Reference label (white) without note name
+      context.fillStyle = referenceColor
+      context.font = "14px Arial"
+      context.fillText("Reference", staveX + 120, hourLabelY)
+      context.restore()
 
       if (!isPlaying) {
         // Draw empty staff with just the clef and time signature
-        // Position the message centered between the treble and bass clefs
+        // Position the message centered between the staves
         context.fillStyle = defaultColor
         context.font = "14px Arial"
         context.textAlign = "center"
 
-        // Calculate the vertical midpoint between the two staves and add 65px
-        const midpointY = trebleStaveY + (bassStaveY - trebleStaveY) / 2 + 65
+        // Calculate the vertical midpoint
+        const midpointY = (secondStaveY + hourStaveY) / 2 + 30
 
-        context.fillText(
-          "Press Play to see notation",
-          staveX + staveWidth / 2,
-          midpointY, // Centered between the staves + 65px
-        )
+        context.fillText("Press Play to see notation", staveX + staveWidth / 2, midpointY)
         context.textAlign = "start" // Reset text alignment
         context.font = "10px Arial" // Reset font size
       } else {
         // Create voices for each staff
-        const trebleVoice = new Voice({ num_beats: 4, beat_value: 4 })
-        const bassVoice = new Voice({ num_beats: 4, beat_value: 4 })
         const secondVoice = new Voice({ num_beats: 4, beat_value: 4 })
+        const minuteVoice = new Voice({ num_beats: 4, beat_value: 4 })
+        const hourVoice = new Voice({ num_beats: 4, beat_value: 4 })
 
         // Arrays to hold notes for each voice
-        const trebleNotes = []
-        const bassNotes = []
         const secondNotes = []
+        const minuteNotes = []
+        const hourNotes = []
 
         // Bass clef notes - reference and hour (transposed down an octave)
         // Reference note as a white whole note (C3)
@@ -164,15 +201,15 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
         })
         hourNote.setStyle({ fillStyle: hourColor, strokeStyle: hourColor })
 
-        // Add notes to bass voice based on toggles
+        // Standard handling for all hours
         if (soundToggles.reference && soundToggles.hour) {
           // If both are enabled, use reference note
           // The hour note will be rendered separately
-          bassNotes.push(referenceNote)
+          hourNotes.push(referenceNote)
         } else if (soundToggles.reference) {
-          bassNotes.push(referenceNote)
+          hourNotes.push(referenceNote)
         } else if (soundToggles.hour) {
-          bassNotes.push(hourNote)
+          hourNotes.push(hourNote)
         } else {
           // Neither reference nor hour is enabled, use a whole rest
           const rest = new StaveNote({
@@ -181,25 +218,25 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
             duration: "wr",
           })
           rest.setStyle({ fillStyle: defaultColor, strokeStyle: defaultColor })
-          bassNotes.push(rest)
+          hourNotes.push(rest)
         }
 
-        // Add bass notes to bass voice
-        bassVoice.addTickables(bassNotes)
+        // Add hour notes to hour voice
+        hourVoice.addTickables(hourNotes)
 
-        // Create a second bass voice for the hour note if both are enabled
+        // Create a second hour voice for the hour note if both are enabled
         if (soundToggles.reference && soundToggles.hour) {
-          const hourVoice = new Voice({ num_beats: 4, beat_value: 4 })
-          hourVoice.addTickables([hourNote])
+          const hourOverlayVoice = new Voice({ num_beats: 4, beat_value: 4 })
+          hourOverlayVoice.addTickables([hourNote])
 
           // Format and draw the hour voice
           const hourFormatter = new Formatter()
-          hourFormatter.joinVoices([hourVoice]).format([hourVoice], staveWidth)
+          hourFormatter.joinVoices([hourOverlayVoice]).format([hourOverlayVoice], staveWidth)
 
-          hourVoice.draw(context, bassStave)
+          hourOverlayVoice.draw(context, hourStave)
         }
 
-        // Treble clef - minute notes (quarter notes)
+        // Minute notes (quarter notes)
         if (soundToggles.minute) {
           // Create a pattern of alternating 10s and ones notes
           // First quarter note - 10s
@@ -210,7 +247,7 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
               duration: "q",
             })
             minuteTensNote1.setStyle({ fillStyle: minuteColor, strokeStyle: minuteColor })
-            trebleNotes.push(minuteTensNote1)
+            minuteNotes.push(minuteTensNote1)
           } else {
             const rest = new StaveNote({
               clef: "treble",
@@ -218,7 +255,7 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
               duration: "qr",
             })
             rest.setStyle({ fillStyle: minuteColor, strokeStyle: minuteColor })
-            trebleNotes.push(rest)
+            minuteNotes.push(rest)
           }
 
           // Second quarter note - ones
@@ -229,7 +266,7 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
               duration: "q",
             })
             minuteOnesNote1.setStyle({ fillStyle: minuteColor, strokeStyle: minuteColor })
-            trebleNotes.push(minuteOnesNote1)
+            minuteNotes.push(minuteOnesNote1)
           } else {
             const rest = new StaveNote({
               clef: "treble",
@@ -237,7 +274,7 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
               duration: "qr",
             })
             rest.setStyle({ fillStyle: minuteColor, strokeStyle: minuteColor })
-            trebleNotes.push(rest)
+            minuteNotes.push(rest)
           }
 
           // Third quarter note - 10s again
@@ -248,7 +285,7 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
               duration: "q",
             })
             minuteTensNote2.setStyle({ fillStyle: minuteColor, strokeStyle: minuteColor })
-            trebleNotes.push(minuteTensNote2)
+            minuteNotes.push(minuteTensNote2)
           } else {
             const rest = new StaveNote({
               clef: "treble",
@@ -256,7 +293,7 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
               duration: "qr",
             })
             rest.setStyle({ fillStyle: minuteColor, strokeStyle: minuteColor })
-            trebleNotes.push(rest)
+            minuteNotes.push(rest)
           }
 
           // Fourth quarter note - ones again
@@ -267,7 +304,7 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
               duration: "q",
             })
             minuteOnesNote2.setStyle({ fillStyle: minuteColor, strokeStyle: minuteColor })
-            trebleNotes.push(minuteOnesNote2)
+            minuteNotes.push(minuteOnesNote2)
           } else {
             const rest = new StaveNote({
               clef: "treble",
@@ -275,7 +312,7 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
               duration: "qr",
             })
             rest.setStyle({ fillStyle: minuteColor, strokeStyle: minuteColor })
-            trebleNotes.push(rest)
+            minuteNotes.push(rest)
           }
         } else {
           // If minute sounds are disabled, fill with quarter rests
@@ -286,12 +323,12 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
               duration: "qr",
             })
             rest.setStyle({ fillStyle: defaultColor, strokeStyle: defaultColor })
-            trebleNotes.push(rest)
+            minuteNotes.push(rest)
           }
         }
 
-        // Add treble notes to treble voice
-        trebleVoice.addTickables(trebleNotes)
+        // Add minute notes to minute voice
+        minuteVoice.addTickables(minuteNotes)
 
         // Second notes - 16th notes alternating between 10s and ones (8 times)
         if (soundToggles.second) {
@@ -361,64 +398,110 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
         // Add second notes to second voice
         secondVoice.addTickables(secondNotes)
 
-        // Format all voices together
-        const formatter = new Formatter()
+        // Format all voices separately
+        const hourFormatter = new Formatter()
+        hourFormatter.joinVoices([hourVoice]).formatToStave([hourVoice], hourStave, { minBuffer: 0 })
 
-        // Format the bass voice separately
-        formatter.joinVoices([bassVoice]).formatToStave([bassVoice], bassStave, { minBuffer: 0 })
+        const minuteFormatter = new Formatter()
+        minuteFormatter.joinVoices([minuteVoice]).formatToStave([minuteVoice], minuteStave, { minBuffer: 0 })
 
-        // Format the treble and second voices together
-        const trebleFormatter = new Formatter()
-        trebleFormatter
-          .joinVoices([trebleVoice, secondVoice])
-          .formatToStave([trebleVoice, secondVoice], trebleStave, { minBuffer: 0 })
+        const secondFormatter = new Formatter()
+        secondFormatter.joinVoices([secondVoice]).formatToStave([secondVoice], secondStave, { minBuffer: 0 })
 
         // Draw the voices
-        bassVoice.draw(context, bassStave)
-        trebleVoice.draw(context, trebleStave)
-        secondVoice.draw(context, trebleStave)
+        hourVoice.draw(context, hourStave)
+        minuteVoice.draw(context, minuteStave)
+        secondVoice.draw(context, secondStave)
 
-        // Add legend at the bottom with note symbols
-        const legendY = height - 30 // Shifted downward by 30px
-        context.fillStyle = defaultColor
-        context.fillText("Legend:", 15, legendY)
+        // Calculate note positions for labels
+        // For hour staff - whole notes
+        const hourNotePositions = calculateNotePositions(staveX, staveWidth, 1)
 
-        let xPos = 70
+        // For minute staff - quarter notes
+        const minuteNotePositions = calculateNotePositions(staveX, staveWidth, 4)
 
-        // Draw simplified note symbols in the legend
+        // For second staff - sixteenth notes
+        const secondNotePositions = calculateNotePositions(staveX, staveWidth, 16)
+
+        // Add note name labels
+        // For hour notes
         if (soundToggles.reference) {
-          // Draw a simple circle for reference
+          const referenceNoteName = "C3"
+          context.save()
           context.fillStyle = referenceColor
-          context.strokeStyle = referenceColor
-          context.fillText("○", xPos, legendY)
-          context.fillText("Reference", xPos + 15, legendY)
-          xPos += 90
+          context.font = "12px Arial"
+          context.textAlign = "center"
+          context.fillText(referenceNoteName, hourNotePositions[0], hourLabelY)
+          context.restore()
         }
 
         if (soundToggles.hour) {
-          // Draw a simple circle for hour
+          const hourNoteName = getHourNoteName(hours)
+          context.save()
           context.fillStyle = hourColor
-          context.strokeStyle = hourColor
-          context.fillText("○", xPos, legendY)
-          context.fillText("Hour", xPos + 15, legendY)
-          xPos += 60
+          context.font = "12px Arial"
+          context.textAlign = "center"
+          // If reference is also enabled, offset the hour note label slightly
+          const xPos = soundToggles.reference ? hourNotePositions[0] + 30 : hourNotePositions[0]
+          context.fillText(hourNoteName, xPos, hourLabelY)
+          context.restore()
         }
 
+        // For minute notes
         if (soundToggles.minute) {
-          // Draw a simple symbol for minute
-          context.fillStyle = minuteColor
-          context.strokeStyle = minuteColor
-          context.fillText("♩", xPos, legendY)
-          context.fillText("Minute", xPos + 15, legendY)
-          xPos += 70
+          // First quarter note - 10s
+          if (minuteTens > 0) {
+            const minuteTensNoteName = getMinuteTensNoteName(minuteTens)
+            context.save()
+            context.fillStyle = minuteColor
+            context.font = "12px Arial"
+            context.textAlign = "center"
+            context.fillText(minuteTensNoteName, minuteNotePositions[0], minuteLabelY)
+            context.fillText(minuteTensNoteName, minuteNotePositions[2], minuteLabelY)
+            context.restore()
+          }
+
+          // Second quarter note - ones
+          if (minuteOnes > 0) {
+            const minuteOnesNoteName = getMinuteOnesNoteName(minuteOnes)
+            context.save()
+            context.fillStyle = minuteColor
+            context.font = "12px Arial"
+            context.textAlign = "center"
+            context.fillText(minuteOnesNoteName, minuteNotePositions[1], minuteLabelY)
+            context.fillText(minuteOnesNoteName, minuteNotePositions[3], minuteLabelY)
+            context.restore()
+          }
         }
 
+        // For second notes
         if (soundToggles.second) {
-          // Draw a simple symbol for second (sixteenth note)
-          context.fillStyle = secondColor
-          context.strokeStyle = secondColor
-          context.fillText("♬", xPos, legendY) // Sixteenth note symbol
-          context.fillText("Second", xPos + 28, legendY)
+          // Label all 16 notes
+          for (let i = 0; i < 16; i++) {
+            let noteName = ""
+            const noteColor = secondColor
+
+            if (i % 2 === 0) {
+              // Even positions - tens
+              if (secondTens > 0) {
+                noteName = getSecondTensNoteName(secondTens)
+              }
+            } else {
+              // Odd positions - ones
+              if (secondOnes > 0) {
+                noteName = getSecondOnesNoteName(secondOnes)
+              }
+            }
+
+            if (noteName) {
+              context.save()
+              context.fillStyle = noteColor
+              context.font = "12px Arial"
+              context.textAlign = "center"
+              context.fillText(noteName, secondNotePositions[i], secondLabelY)
+              context.restore()
+            }
+          }
         }
       }
     } catch (error) {
@@ -453,6 +536,20 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
     defaultColor,
   ])
 
+  // Helper function to calculate note positions
+  const calculateNotePositions = (staveX: number, staveWidth: number, noteCount: number): number[] => {
+    const positions: number[] = []
+    const usableWidth = staveWidth - 100 // Account for clef and time signature
+    const startX = staveX + 80 // Start after clef and time signature
+
+    for (let i = 0; i < noteCount; i++) {
+      const x = startX + (usableWidth / noteCount) * (i + 0.5) // Center in each note's space
+      positions.push(x)
+    }
+
+    return positions
+  }
+
   // Get hour note key for bass clef (transposed down an octave)
   const getHourNoteKeyBass = (hour: number): string => {
     const hourNotes = [
@@ -474,12 +571,41 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
     return hourNotes[hour === 0 ? 12 : hour]
   }
 
+  // Get hour note name
+  const getHourNoteName = (hour: number): string => {
+    const hourNoteNames = [
+      "C3", // 12 o'clock
+      "C3", // 1 o'clock
+      "D3", // 2 o'clock
+      "E3", // 3 o'clock
+      "F3", // 4 o'clock
+      "G3", // 5 o'clock
+      "A3", // 6 o'clock
+      "B3", // 7 o'clock
+      "C4", // 8 o'clock
+      "D4", // 9 o'clock
+      "E4", // 10 o'clock
+      "F4", // 11 o'clock
+      "G4", // 12 o'clock
+    ]
+
+    return hourNoteNames[hour === 0 ? 12 : hour]
+  }
+
   // Get minute tens note key for VexFlow
   const getMinuteTensNoteKey = (tens: number): string => {
     if (tens === 0) return "b/4" // Default for rest
 
     const tensNotes = ["", "c/4", "d/4", "e/4", "f/4", "g/4"]
     return tensNotes[tens]
+  }
+
+  // Get minute tens note name
+  const getMinuteTensNoteName = (tens: number): string => {
+    if (tens === 0) return ""
+
+    const tensNoteNames = ["", "C4", "D4", "E4", "F4", "G4"]
+    return tensNoteNames[tens]
   }
 
   // Get minute ones note key for VexFlow
@@ -490,12 +616,28 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
     return onesNotes[ones]
   }
 
+  // Get minute ones note name
+  const getMinuteOnesNoteName = (ones: number): string => {
+    if (ones === 0) return ""
+
+    const onesNoteNames = ["", "C4", "D4", "E4", "F4", "G4", "A4", "B4", "C5", "D5"]
+    return onesNoteNames[ones]
+  }
+
   // Get second tens note key for VexFlow
   const getSecondTensNoteKey = (tens: number): string => {
     if (tens === 0) return "b/4" // Default for rest
 
     const tensNotes = ["", "c/5", "d/5", "e/5", "f/5", "g/5"]
     return tensNotes[tens]
+  }
+
+  // Get second tens note name
+  const getSecondTensNoteName = (tens: number): string => {
+    if (tens === 0) return ""
+
+    const tensNoteNames = ["", "C5", "D5", "E5", "F5", "G5"]
+    return tensNoteNames[tens]
   }
 
   // Get second ones note key for VexFlow
@@ -506,9 +648,17 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
     return onesNotes[ones]
   }
 
+  // Get second ones note name
+  const getSecondOnesNoteName = (ones: number): string => {
+    if (ones === 0) return ""
+
+    const onesNoteNames = ["", "C5", "D5", "E5", "F5", "G5", "A5", "B5", "C6", "D6"]
+    return onesNoteNames[ones]
+  }
+
   return (
     <div className="w-full rounded-lg border border-white/10 bg-gray-800/50 p-4">
-      <h3 className="mb-4 text-center text-sm font-medium text-gray-300">Musical Notation</h3>
+      <h3 className="mb-4 text-center text-sm font-medium text-gray-300">Sightread the Time</h3>
       <div
         ref={containerRef}
         className="w-full overflow-hidden rounded-md bg-gray-900/50"

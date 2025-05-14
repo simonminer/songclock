@@ -119,5 +119,13 @@ export default function AnalogClock({ hours, minutes, seconds }: AnalogClockProp
     ctx.shadowBlur = 0
   }
 
-  return <canvas ref={canvasRef} width={300} height={300} className="rounded-full bg-gray-800/50 shadow-lg" />
+  return (
+    <canvas
+      ref={canvasRef}
+      width={300}
+      height={300}
+      className="rounded-full bg-gray-800/50 shadow-lg"
+      aria-label="Analog clock"
+    />
+  )
 }

@@ -1,17 +1,15 @@
 "use client"
 
 import { useState, useEffect, useRef, type KeyboardEvent } from "react"
-import { Play, Pause, Volume2, Info, RefreshCw } from "lucide-react"
+import { Play, Pause, Settings, HelpCircle, Music, EyeOff } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Slider } from "@/components/ui/slider"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import AnalogClock from "@/components/analog-clock"
 import AudioEngine from "@/components/audio-engine"
-import IntervalLegend from "@/components/interval-legend"
 import MusicalStaff from "@/components/musical-staff"
+import SettingsModal from "@/components/settings-modal"
+import HelpModal from "@/components/help-modal"
 
 export default function SongClock() {
   // Running time state (for display and audio)
@@ -41,9 +39,54 @@ export default function SongClock() {
     minute: 0.5,
     second: 0.3,
   })
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const [showMusicStaff, setShowMusicStaff] = useState(false)
+  const [announcement, setAnnouncement] = useState("")
 
   // Ref to track if we're currently resetting
   const isResettingRef = useRef(false)
+
+  // Add refs for the buttons to manage focus
+  const settingsButtonRef = useRef<HTMLButtonElement>(null)
+  const helpButtonRef = useRef<HTMLButtonElement>(null)
+  const playButtonRef = useRef<HTMLButtonElement>(null)
+  const staffToggleButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      // Only handle shortcuts when no modals are open
+      if (isSettingsOpen || isHelpOpen) return
+
+      // "p" key to toggle play/pause
+      if (e.key === "p" || e.key === "P") {
+        e.preventDefault()
+        togglePlay()
+      }
+
+      // Question mark to open help
+      if (e.key === "?" || e.key === "/") {
+        e.preventDefault()
+        setIsHelpOpen(true)
+      }
+
+      // Comma to open settings
+      if (e.key === ",") {
+        e.preventDefault()
+        setIsSettingsOpen(true)
+      }
+
+      // 's' to toggle music staff
+      if (e.key === "s" || e.key === "S") {
+        e.preventDefault()
+        setShowMusicStaff((prev) => !prev)
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [isSettingsOpen, isHelpOpen, isPlaying]) // Added isPlaying to the dependency array
 
   // Update time automatically
   useEffect(() => {
@@ -74,11 +117,23 @@ export default function SongClock() {
   }, [useManualTime, manualTimeBase, manualTimeOffset])
 
   const togglePlay = () => {
-    setIsPlaying(!isPlaying)
+    const newIsPlaying = !isPlaying
+    setIsPlaying(newIsPlaying)
+
+    // Announce state change to screen readers
+    setAnnouncement(newIsPlaying ? "Sound on" : "Sound off")
   }
 
-  const handleMasterVolumeChange = (value: number[]) => {
-    setMasterVolume(value[0])
+  const toggleMusicStaff = () => {
+    const newShowMusicStaff = !showMusicStaff
+    setShowMusicStaff(newShowMusicStaff)
+
+    // Announce state change to screen readers
+    setAnnouncement(newShowMusicStaff ? "Music staff on" : "Music staff off")
+  }
+
+  const handleMasterVolumeChange = (value: number) => {
+    setMasterVolume(value)
   }
 
   const handleSoundVolumeChange = (component: keyof typeof soundVolumes, value: number[]) => {
@@ -276,456 +331,176 @@ export default function SongClock() {
   const displaySeconds = currentTime.getSeconds()
   const displayMilliseconds = currentTime.getMilliseconds()
 
-  // Extract tens and ones digits for display
-  const minuteTens = Math.floor(displayMinutes / 10)
-  const minuteOnes = displayMinutes % 10
-  const secondTens = Math.floor(displaySeconds / 10)
-  const secondOnes = displaySeconds % 10
+  // Get current year for footer
+  const currentYear = new Date().getFullYear()
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="flex min-h-screen flex-col bg-gray-900 text-white">
+      {/* Live region for screen reader announcements */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </div>
+
       <header className="border-b border-white/10 bg-gray-800/50 p-4">
-        <div className="mx-auto max-w-6xl">
-          <h1 className="text-4xl font-bold">SongClock</h1>
-          <p className="mt-1 text-gray-400">Ear training tool: Learn to tell time by listening to musical intervals</p>
+        <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+          <div className="flex h-full items-center justify-center sm:justify-start">
+            <Image
+              src="/images/songclock-logo-light.png"
+              alt="Song Clock - Listen to the time."
+              width={300}
+              height={70}
+              className="h-auto w-auto max-h-16"
+              priority
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3">
+            <Button
+              ref={playButtonRef}
+              onClick={togglePlay}
+              variant="outline"
+              size="lg"
+              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              aria-label={isPlaying ? "Pause sound" : "Play sound"}
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="mr-2 h-5 w-5" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-5 w-5" />
+                  Play
+                </>
+              )}
+            </Button>
+            <Button
+              ref={staffToggleButtonRef}
+              onClick={toggleMusicStaff}
+              variant="outline"
+              className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              aria-label={showMusicStaff ? "Hide music staff" : "Show music staff"}
+            >
+              {showMusicStaff ? (
+                <>
+                  <EyeOff className="h-5 w-5" />
+                  <span className="hidden sm:inline">Hide Staff</span>
+                  <span className="sm:hidden">Staff</span>
+                </>
+              ) : (
+                <>
+                  <Music className="h-5 w-5" />
+                  <span className="hidden sm:inline">Show Staff</span>
+                  <span className="sm:hidden">Staff</span>
+                </>
+              )}
+            </Button>
+            <Button
+              ref={helpButtonRef}
+              onClick={() => setIsHelpOpen(true)}
+              variant="outline"
+              className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              aria-label="Open help"
+            >
+              <HelpCircle className="h-5 w-5" />
+              <span className="hidden sm:inline">Help</span>
+            </Button>
+            <Button
+              ref={settingsButtonRef}
+              onClick={() => setIsSettingsOpen(true)}
+              variant="outline"
+              className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              aria-label="Open settings"
+            >
+              <Settings className="h-5 w-5" />
+              <span className="hidden sm:inline">Settings</span>
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl p-4">
-        {/* Primary Play/Pause control - Always visible at top */}
-        <div className="mb-8">
-          <Button
-            onClick={togglePlay}
-            variant="outline"
-            size="lg"
-            className="w-full border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 md:w-64"
-            aria-label={isPlaying ? "Pause sound" : "Play sound"}
-          >
-            {isPlaying ? (
-              <>
-                <Pause className="mr-2 h-5 w-5" />
-                Pause Sound
-              </>
-            ) : (
-              <>
-                <Play className="mr-2 h-5 w-5" />
-                Play Sound
-              </>
-            )}
-          </Button>
-        </div>
-
+      <main className="flex-1 w-full py-5">
         {/* Main Content Section - Clock and Musical Staff */}
-        <div className="mb-8 flex flex-col gap-8">
-          {/* Clock Section */}
-          <div className="flex flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 p-6">
+        <div className="flex flex-col gap-5">
+          {/* Clock Section - Converted to a button */}
+          <button
+            className="mx-4 flex w-auto flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 p-6 transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+            onClick={togglePlay}
+            aria-label={`Clock panel. Click to ${isPlaying ? "pause" : "play"} sound`}
+            type="button"
+          >
             <AnalogClock hours={displayHours} minutes={displayMinutes} seconds={displaySeconds} />
             <div className="mt-4 text-center text-2xl font-mono">
               {formatTwoDigits(displayHours)}:{formatTwoDigits(displayMinutes)}:{formatTwoDigits(displaySeconds)}
             </div>
-          </div>
+          </button>
 
-          {/* Musical Staff Section - Now full width */}
-          <div className="flex items-center justify-center w-full">
-            <MusicalStaff
-              hours={displayHours}
-              minutes={displayMinutes}
-              seconds={displaySeconds}
-              isPlaying={isPlaying}
-              soundToggles={soundToggles}
-            />
-          </div>
-        </div>
-
-        {/* Controls Section - Sound and Time Controls */}
-        <div className="mb-8 grid gap-8 lg:grid-cols-2">
-          {/* Sound Controls */}
-          <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-            <h2 className="mb-4 text-xl font-medium">Sound Controls</h2>
-
-            <div className="grid gap-4">
-              <div className="grid grid-cols-[3rem_1fr_auto] items-center gap-3">
-                <div className="text-right text-sm font-medium">{formatPercentage(soundVolumes.reference)}</div>
-                <div
-                  className="group relative"
-                  onKeyDown={(e) => handleSliderKeyDown(e, "reference", soundVolumes.reference)}
-                  tabIndex={soundToggles.reference ? 0 : -1}
-                  role="slider"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(soundVolumes.reference * 100)}
-                  aria-label="Reference tone volume"
-                  aria-disabled={!soundToggles.reference}
-                >
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="reference-toggle" className="text-sm">
-                      Reference Tone
-                    </Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-gray-400" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-xs">Warm ambient C4 pad with reverb that plays continuously</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <Slider
-                    value={[soundVolumes.reference]}
-                    max={1}
-                    step={0.01}
-                    onValueChange={(value) => handleSoundVolumeChange("reference", value)}
-                    className="w-full focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 group-focus-visible:ring-2 group-focus-visible:ring-white group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-gray-900"
-                    disabled={!soundToggles.reference}
-                  />
-                </div>
-                <Switch
-                  id="reference-toggle"
-                  checked={soundToggles.reference}
-                  onCheckedChange={() => toggleSoundComponent("reference")}
-                  className="focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                  aria-label="Toggle reference tone"
-                />
-              </div>
-
-              <div className="grid grid-cols-[3rem_1fr_auto] items-center gap-3">
-                <div className="text-right text-sm font-medium">{formatPercentage(soundVolumes.hour)}</div>
-                <div
-                  className="group relative"
-                  onKeyDown={(e) => handleSliderKeyDown(e, "hour", soundVolumes.hour)}
-                  tabIndex={soundToggles.hour ? 0 : -1}
-                  role="slider"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(soundVolumes.hour * 100)}
-                  aria-label="Hour tone volume"
-                  aria-disabled={!soundToggles.hour}
-                >
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="hour-toggle" className="text-sm">
-                      Hour Tone
-                    </Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-gray-400" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-xs">
-                            Ambient pad with reverb playing the interval corresponding to the hour
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <Slider
-                    value={[soundVolumes.hour]}
-                    max={1}
-                    step={0.01}
-                    onValueChange={(value) => handleSoundVolumeChange("hour", value)}
-                    className="w-full focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 group-focus-visible:ring-2 group-focus-visible:ring-white group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-gray-900"
-                    disabled={!soundToggles.hour}
-                  />
-                </div>
-                <Switch
-                  id="hour-toggle"
-                  checked={soundToggles.hour}
-                  onCheckedChange={() => toggleSoundComponent("hour")}
-                  className="focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                  aria-label="Toggle hour tone"
-                />
-              </div>
-
-              <div className="grid grid-cols-[3rem_1fr_auto] items-center gap-3">
-                <div className="text-right text-sm font-medium">{formatPercentage(soundVolumes.minute)}</div>
-                <div
-                  className="group relative"
-                  onKeyDown={(e) => handleSliderKeyDown(e, "minute", soundVolumes.minute)}
-                  tabIndex={soundToggles.minute ? 0 : -1}
-                  role="slider"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(soundVolumes.minute * 100)}
-                  aria-label="Minute tones volume"
-                  aria-disabled={!soundToggles.minute}
-                >
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="minute-toggle" className="text-sm">
-                      Minute Tones
-                    </Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-gray-400" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-xs">
-                            Alternating tones for tens and ones digits of minutes. Tens: {minuteTens} (
-                            {minuteTens > 0 ? ["C", "D", "E", "F", "G"][minuteTens - 1] : "none"}), Ones: {minuteOnes} (
-                            {minuteOnes > 0 ? ["C", "D", "E", "F", "G", "A", "B", "C", "D"][minuteOnes - 1] : "none"})
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <Slider
-                    value={[soundVolumes.minute]}
-                    max={1}
-                    step={0.01}
-                    onValueChange={(value) => handleSoundVolumeChange("minute", value)}
-                    className="w-full focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 group-focus-visible:ring-2 group-focus-visible:ring-white group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-gray-900"
-                    disabled={!soundToggles.minute}
-                  />
-                </div>
-                <Switch
-                  id="minute-toggle"
-                  checked={soundToggles.minute}
-                  onCheckedChange={() => toggleSoundComponent("minute")}
-                  className="focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                  aria-label="Toggle minute tones"
-                />
-              </div>
-
-              <div className="grid grid-cols-[3rem_1fr_auto] items-center gap-3">
-                <div className="text-right text-sm font-medium">{formatPercentage(soundVolumes.second)}</div>
-                <div
-                  className="group relative"
-                  onKeyDown={(e) => handleSliderKeyDown(e, "second", soundVolumes.second)}
-                  tabIndex={soundToggles.second ? 0 : -1}
-                  role="slider"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(soundVolumes.second * 100)}
-                  aria-label="Second tones volume"
-                  aria-disabled={!soundToggles.second}
-                >
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="second-toggle" className="text-sm">
-                      Second Tones
-                    </Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-gray-400" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-xs">
-                            Tones for tens and ones digits of seconds. Tens: {secondTens}, Ones: {secondOnes}. Each
-                            plays twice per second (0.25s each).
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <Slider
-                    value={[soundVolumes.second]}
-                    max={1}
-                    step={0.01}
-                    onValueChange={(value) => handleSoundVolumeChange("second", value)}
-                    className="w-full focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 group-focus-visible:ring-2 group-focus-visible:ring-white group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-gray-900"
-                    disabled={!soundToggles.second}
-                  />
-                </div>
-                <Switch
-                  id="second-toggle"
-                  checked={soundToggles.second}
-                  onCheckedChange={() => toggleSoundComponent("second")}
-                  className="focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                  aria-label="Toggle second tones"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-center gap-4">
-              <Volume2 className="h-5 w-5" />
-              <Label htmlFor="master-volume" className="text-sm">
-                Master Volume
-              </Label>
-              <div className="text-sm font-medium">{formatPercentage(masterVolume)}</div>
-              <div
-                className="group relative flex-1"
-                onKeyDown={(e) => handleSliderKeyDown(e, "master", masterVolume)}
-                tabIndex={0}
-                role="slider"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(masterVolume * 100)}
-                aria-label="Master volume"
-              >
-                <Slider
-                  id="master-volume"
-                  value={[masterVolume]}
-                  max={1}
-                  step={0.01}
-                  onValueChange={handleMasterVolumeChange}
-                  className="w-full focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 group-focus-visible:ring-2 group-focus-visible:ring-white group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-gray-900"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Time Controls */}
-          <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-medium">Manual Time Control</h2>
-              <Switch
-                id="manual-time-toggle"
-                checked={useManualTime}
-                onCheckedChange={toggleTimeMode}
-                aria-label="Toggle manual time control"
-                className="focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+          {/* Musical Staff Section - Conditionally rendered */}
+          {showMusicStaff && (
+            <div className="mx-4 flex items-center justify-center w-auto">
+              <MusicalStaff
+                hours={displayHours}
+                minutes={displayMinutes}
+                seconds={displaySeconds}
+                isPlaying={isPlaying}
+                soundToggles={soundToggles}
               />
             </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="hours-input" className="text-xs">
-                  Hours (00-12)
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="hours-input"
-                    type="text"
-                    inputMode="numeric"
-                    value={formatTwoDigits(inputValues.hours)}
-                    onChange={(e) => handleManualTimeChange("hours", e.target.value)}
-                    disabled={!useManualTime}
-                    className="bg-white/10 font-mono text-center text-lg focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                    maxLength={2}
-                    aria-label="Hours"
-                  />
-                  {useManualTime && (
-                    <div className="absolute right-0 top-0 flex h-full flex-col">
-                      <button
-                        type="button"
-                        onClick={() => handleTimeIncrement("hours", true)}
-                        className="flex h-1/2 w-6 items-center justify-center rounded-tr-md border-l border-t border-white/10 bg-white/5 text-xs hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                        aria-label="Increase hours"
-                      >
-                        ▲
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleTimeIncrement("hours", false)}
-                        className="flex h-1/2 w-6 items-center justify-center rounded-br-md border-b border-l border-white/10 bg-white/5 text-xs hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                        aria-label="Decrease hours"
-                      >
-                        ▼
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="minutes-input" className="text-xs">
-                  Minutes (00-59)
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="minutes-input"
-                    type="text"
-                    inputMode="numeric"
-                    value={formatTwoDigits(inputValues.minutes)}
-                    onChange={(e) => handleManualTimeChange("minutes", e.target.value)}
-                    disabled={!useManualTime}
-                    className="bg-white/10 font-mono text-center text-lg focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                    maxLength={2}
-                    aria-label="Minutes"
-                  />
-                  {useManualTime && (
-                    <div className="absolute right-0 top-0 flex h-full flex-col">
-                      <button
-                        type="button"
-                        onClick={() => handleTimeIncrement("minutes", true)}
-                        className="flex h-1/2 w-6 items-center justify-center rounded-tr-md border-l border-t border-white/10 bg-white/5 text-xs hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                        aria-label="Increase minutes"
-                      >
-                        ▲
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleTimeIncrement("minutes", false)}
-                        className="flex h-1/2 w-6 items-center justify-center rounded-br-md border-b border-l border-white/10 bg-white/5 text-xs hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                        aria-label="Decrease minutes"
-                      >
-                        ▼
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="seconds-input" className="text-xs">
-                  Seconds (00-59)
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="seconds-input"
-                    type="text"
-                    inputMode="numeric"
-                    value={formatTwoDigits(inputValues.seconds)}
-                    onChange={(e) => handleManualTimeChange("seconds", e.target.value)}
-                    disabled={!useManualTime}
-                    className="bg-white/10 font-mono text-center text-lg focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                    maxLength={2}
-                    aria-label="Seconds"
-                  />
-                  {useManualTime && (
-                    <div className="absolute right-0 top-0 flex h-full flex-col">
-                      <button
-                        type="button"
-                        onClick={() => handleTimeIncrement("seconds", true)}
-                        className="flex h-1/2 w-6 items-center justify-center rounded-tr-md border-l border-t border-white/10 bg-white/5 text-xs hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                        aria-label="Increase seconds"
-                      >
-                        ▲
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleTimeIncrement("seconds", false)}
-                        className="flex h-1/2 w-6 items-center justify-center rounded-br-md border-b border-l border-white/10 bg-white/5 text-xs hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                        aria-label="Decrease seconds"
-                      >
-                        ▼
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {useManualTime && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetToCurrentTime}
-                className="mt-4 flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                aria-label="Reset to current time"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Reset to Current Time
-              </Button>
-            )}
-
-            <div className="mt-6">
-              <h3 className="mb-2 text-lg font-medium">Instrument Guide</h3>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-gray-300">
-                <li>Reference tone: Ambient pad playing C3 with reverb</li>
-                <li>Hours: Ambient pad playing intervals in the C-Major scale</li>
-                <li>Minutes: Piano-like synthesized tones for alternating tens and ones digits</li>
-                <li>Seconds: Vibraphone-like synthesized tones for alternating tens and ones digits</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Reference Section */}
-        <div className="mb-8">
-          <IntervalLegend />
+          )}
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="mt-5 border-t border-white/10 bg-gray-800/50 py-4 px-4 text-center text-sm text-gray-400">
+        &copy; {currentYear}{" "}
+        <Link
+          href="https://pedalpoint.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-white hover:text-white/80 underline underline-offset-2 transition-colors"
+        >
+          Pedal Point Solutions
+        </Link>
+      </footer>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => {
+          setIsSettingsOpen(false)
+          // Return focus to settings button when modal closes
+          if (settingsButtonRef.current) {
+            settingsButtonRef.current.focus()
+          }
+        }}
+        masterVolume={masterVolume}
+        setMasterVolume={handleMasterVolumeChange}
+        soundToggles={soundToggles}
+        toggleSoundComponent={toggleSoundComponent}
+        soundVolumes={soundVolumes}
+        handleSoundVolumeChange={handleSoundVolumeChange}
+        handleSliderKeyDown={handleSliderKeyDown}
+        useManualTime={useManualTime}
+        toggleTimeMode={toggleTimeMode}
+        inputValues={inputValues}
+        handleManualTimeChange={handleManualTimeChange}
+        handleTimeIncrement={handleTimeIncrement}
+        resetToCurrentTime={resetToCurrentTime}
+        formatTwoDigits={formatTwoDigits}
+        formatPercentage={formatPercentage}
+      />
+
+      {/* Help Modal */}
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => {
+          setIsHelpOpen(false)
+          // Return focus to help button when modal closes
+          if (helpButtonRef.current) {
+            helpButtonRef.current.focus()
+          }
+        }}
+      />
 
       {isPlaying && (
         <AudioEngine
