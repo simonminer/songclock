@@ -26,7 +26,7 @@ interface SettingsModalProps {
     reference: number
     hour: number
     minute: number
-    second: number
+    second: boolean
   }
   handleSoundVolumeChange: (component: keyof typeof soundVolumes, value: number[]) => void
   handleSliderKeyDown: (
@@ -704,6 +704,19 @@ export default function SettingsModal({
               </ul>
             </div>
           </div>
+        </div>
+
+        {/* Bottom close button */}
+        <div className="mt-8 flex justify-center">
+          <Button
+            onClick={onClose}
+            variant="outline"
+            size="lg"
+            className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+            aria-label="Close settings"
+          >
+            Close
+          </Button>
         </div>
       </div>
     </div>
