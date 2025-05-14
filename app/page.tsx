@@ -45,6 +45,7 @@ export default function SongClock() {
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [showMusicStaff, setShowMusicStaff] = useState(false)
   const [announcement, setAnnouncement] = useState("")
+  const [hasVisitedBefore, setHasVisitedBefore] = useState(true)
 
   // Get the audio context
   const { ensureAudioContextRunning } = useAudioContext()
@@ -120,6 +121,25 @@ export default function SongClock() {
 
     return () => clearInterval(interval)
   }, [useManualTime, manualTimeBase, manualTimeOffset])
+
+  // Check if this is the first visit
+  useEffect(() => {
+    // Check localStorage for previous visits
+    const hasVisited = localStorage.getItem("songClockHasVisited")
+
+    if (!hasVisited) {
+      // First visit - show help modal with welcome message
+      setIsHelpOpen(true)
+      setHasVisitedBefore(false)
+
+      // Set the flag for future visits
+      localStorage.setItem("songClockHasVisited", "true")
+    } else {
+      // Not first visit - ensure help modal is closed
+      setIsHelpOpen(false)
+      setHasVisitedBefore(true)
+    }
+  }, [])
 
   // Modify the togglePlay function to ensure audio context is resumed
   const togglePlay = async () => {
@@ -420,7 +440,7 @@ export default function SongClock() {
             <button
               className="mx-4 flex w-auto flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 p-6 transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               onClick={togglePlay}
-              aria-label={`Clock panel. Click to ${isPlaying ? "pause" : "play"} sound`}
+              aria-label={`Clock panel showing ${formatTwoDigits(displayHours)}:${formatTwoDigits(displayMinutes)}:${formatTwoDigits(displaySeconds)}. ${isPlaying ? "Pause" : "Play"} sound`}
               type="button"
             >
               <AnalogClock hours={displayHours} minutes={displayMinutes} seconds={displaySeconds} />
@@ -518,6 +538,7 @@ export default function SongClock() {
               helpButtonRef.current.focus()
             }
           }}
+          customTitle={!hasVisitedBefore ? "Welcome to Song Clock" : undefined}
         />
 
         {isPlaying && (

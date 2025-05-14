@@ -690,19 +690,14 @@ export default function AudioEngine({
     // Ensure context is running
     ensureAudioContextRunning()
 
-    // Clear any existing second scheduler
-    if (secondSchedulerRef.current !== null) {
-      clearInterval(secondSchedulerRef.current)
-      secondSchedulerRef.current = null
-    }
-
     const localMasterGain = localMasterGainRef.current
     const reverb = reverbRef.current
 
-    // Handle reference tone (C4 ambient pad with reverb)
+    // Handle reference tone (C4 ambient pad with reverb) - only create once
     if (soundToggles.reference) {
       // Only create a new reference tone if one isn't already playing
       if (!referenceSourceRef.current) {
+        console.log("Creating new reference tone")
         const { source, gainNode } = playNote(
           "ambient",
           "C3",
@@ -728,12 +723,14 @@ export default function AudioEngine({
       }
     }
 
-    // Handle hour tone (ambient pad with reverb)
+    // Handle hour tone (ambient pad with reverb) - only change at new hour
     if (soundToggles.hour) {
       const hourNote = getHourNote(hours)
 
       // Only create a new hour tone if the hour has changed or one isn't already playing
       if (lastPlayedHourRef.current !== hours || !hourSourceRef.current) {
+        console.log(`Hour changed from ${lastPlayedHourRef.current} to ${hours}, creating new hour tone`)
+
         // Stop the previous hour tone if it exists
         if (hourSourceRef.current) {
           safelyStopAndDisconnectSource(hourSourceRef.current, hourGainRef.current)
@@ -769,6 +766,12 @@ export default function AudioEngine({
         hourGainRef.current = null
         lastPlayedHourRef.current = null
       }
+    }
+
+    // Clear any existing second scheduler
+    if (secondSchedulerRef.current !== null) {
+      clearInterval(secondSchedulerRef.current)
+      secondSchedulerRef.current = null
     }
 
     // Extract tens and ones digits from minutes

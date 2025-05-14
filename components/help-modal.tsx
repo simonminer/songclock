@@ -8,9 +8,10 @@ import IntervalLegend from "@/components/interval-legend"
 interface HelpModalProps {
   isOpen: boolean
   onClose: () => void
+  customTitle?: string
 }
 
-export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
+export default function HelpModal({ isOpen, onClose, customTitle }: HelpModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const initialFocusRef = useRef<HTMLButtonElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -109,7 +110,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
       >
         <div className="mb-4 flex items-center justify-between">
           <h1 id="help-title" className="text-2xl font-bold" ref={headingRef} tabIndex={-1}>
-            Help
+            Welcome to Song Clock
           </h1>
           <Button
             ref={initialFocusRef}
@@ -191,16 +192,17 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 <h3 className="font-medium">Sound Components:</h3>
                 <ul className="list-disc pl-5">
                   <li>
-                    <strong>Reference Tone:</strong> Ambient pad playing C3 (continuous background)
+                    <strong>Reference Tone:</strong> Background drone sound playing C3 continuously
                   </li>
                   <li>
-                    <strong>Hour Tone:</strong> Ambient pad playing intervals in the C-Major scale based on the hour
+                    <strong>Hour Tone:</strong> Background drone sound playing intervals in the C-Major scale based on
+                    the hour
                   </li>
                   <li>
-                    <strong>Minute Tones:</strong> Harp-like tones for alternating tens and ones digits of minutes
+                    <strong>Minute Tones:</strong> "Bing-bong" tones for alternating tens and ones digits of minutes
                   </li>
                   <li>
-                    <strong>Second Tones:</strong> Vibraphone-like tones for alternating tens and ones digits of seconds
+                    <strong>Second Tones:</strong> Brief chirps for alternating tens and ones digits of seconds
                   </li>
                 </ul>
               </div>

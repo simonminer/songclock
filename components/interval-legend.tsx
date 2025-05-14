@@ -66,14 +66,34 @@ export default function IntervalLegend({ alwaysExpanded = false }: IntervalLegen
         </Button>
       )}
 
-      {alwaysExpanded && <h3 className="mb-4 text-lg font-medium">Interval Reference Guide</h3>}
+      {alwaysExpanded && <h3 className="mb-2 text-lg font-medium">Interval Reference Guide</h3>}
+      {alwaysExpanded && (
+        <p className="mb-4 text-sm text-gray-300 italic">
+          Press a tab heading below to learn about each type of sound.
+        </p>
+      )}
 
       {(isOpen || alwaysExpanded) && (
         <Tabs defaultValue="hours" className={alwaysExpanded ? "" : "mt-4"}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="hours">Hour Intervals</TabsTrigger>
-            <TabsTrigger value="minutes">Minute Notes</TabsTrigger>
-            <TabsTrigger value="seconds">Second Notes</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 bg-gray-900 p-0.5 rounded-md">
+            <TabsTrigger
+              value="hours"
+              className="mx-0.5 first:ml-0 last:mr-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=inactive]:text-white/90 data-[state=inactive]:bg-gray-800"
+            >
+              Hour Intervals
+            </TabsTrigger>
+            <TabsTrigger
+              value="minutes"
+              className="mx-0.5 first:ml-0 last:mr-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=inactive]:text-white/90 data-[state=inactive]:bg-gray-800"
+            >
+              Minute Notes
+            </TabsTrigger>
+            <TabsTrigger
+              value="seconds"
+              className="mx-0.5 first:ml-0 last:mr-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=inactive]:text-white/90 data-[state=inactive]:bg-gray-800"
+            >
+              Second Notes
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="hours" className="mt-2">

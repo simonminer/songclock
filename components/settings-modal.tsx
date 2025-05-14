@@ -318,7 +318,7 @@ export default function SettingsModal({
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="max-w-xs">Warm ambient C4 pad with reverb that plays continuously</p>
+                          <p className="max-w-xs">Background drone sound playing C3 continuously</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -371,7 +371,7 @@ export default function SettingsModal({
                         </TooltipTrigger>
                         <TooltipContent>
                           <p className="max-w-xs">
-                            Ambient pad with reverb playing the interval corresponding to the hour
+                            Background drone sound playing intervals in the C-Major scale based on the hour
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -424,7 +424,7 @@ export default function SettingsModal({
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="max-w-xs">Alternating tones for tens and ones digits of minutes</p>
+                          <p className="max-w-xs">"Bing-bong" tones for alternating tens and ones digits of minutes</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -476,9 +476,7 @@ export default function SettingsModal({
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="max-w-xs">
-                            Tones for tens and ones digits of seconds. Each plays twice per second (0.25s each).
-                          </p>
+                          <p className="max-w-xs">Brief chirps for alternating tens and ones digits of seconds</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -700,10 +698,9 @@ export default function SettingsModal({
             <div className="mt-6">
               <h3 className="mb-2 text-lg font-medium">Instrument Guide</h3>
               <ul className="list-disc space-y-1 pl-5 text-sm text-gray-300">
-                <li>Reference tone: Ambient pad playing C3 with reverb</li>
-                <li>Hours: Ambient pad playing intervals in the C-Major scale</li>
-                <li>Minutes: Piano-like synthesized tones for alternating tens and ones digits</li>
-                <li>Seconds: Vibraphone-like synthesized tones for alternating tens and ones digits</li>
+                <li>Reference and hour tones: Background drone sounds</li>
+                <li>Minutes: "Bing-bong" tones for alternating tens and ones digits</li>
+                <li>Seconds: Brief chirps for alternating tens and ones digits</li>
               </ul>
             </div>
           </div>
