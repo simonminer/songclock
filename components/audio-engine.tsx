@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { useAudioContext } from "./audio-context-provider"
 
 interface AudioEngineProps {
   hours: number
@@ -58,9 +59,12 @@ export default function AudioEngine({
   soundToggles,
   soundVolumes,
 }: AudioEngineProps) {
-  const audioContextRef = useRef<AudioContext | null>(null)
+  // Use the shared audio context
+  const { audioContext, masterGain, ensureAudioContextRunning } = useAudioContext()
+
+  // Local refs
   const reverbRef = useRef<ConvolverNode | null>(null)
-  const masterGainRef = useRef<GainNode | null>(null)
+  const localMasterGainRef = useRef<GainNode | null>(null)
   const activeSourcesRef = useRef<Array<{ source: OscillatorNode; endTime?: number; gainNode?: GainNode }>>([])
   const secondSchedulerRef = useRef<number | null>(null)
   const referenceSourceRef = useRef<OscillatorNode | null>(null)
@@ -69,48 +73,41 @@ export default function AudioEngine({
   const hourGainRef = useRef<GainNode | null>(null)
   const lastPlayedHourRef = useRef<number | null>(null)
   const cleanupTimerRef = useRef<number | null>(null)
+  const isInitializedRef = useRef<boolean>(false)
 
-  // Initialize audio context
+  // Initialize audio processing chain
   useEffect(() => {
-    // Create AudioContext
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-    audioContextRef.current = ctx
+    if (!audioContext || !masterGain || isInitializedRef.current) return
 
-    // Function to ensure context is running
-    const ensureContextRunning = () => {
-      if (ctx.state === "suspended") {
-        ctx.resume().catch((err) => console.error("Error resuming AudioContext:", err))
-      }
+    // Ensure audio context is running
+    ensureAudioContextRunning()
+
+    try {
+      // Create local master gain (for this instance's volume control)
+      const localMasterGain = audioContext.createGain()
+      localMasterGain.gain.value = masterVolume
+      localMasterGain.connect(masterGain)
+      localMasterGainRef.current = localMasterGain
+
+      // Create reverb
+      const convolver = audioContext.createConvolver()
+      createReverbImpulse(audioContext, convolver)
+      convolver.connect(localMasterGain)
+      reverbRef.current = convolver
+
+      // Set up periodic cleanup of finished nodes
+      cleanupTimerRef.current = window.setInterval(() => {
+        cleanupFinishedNodes()
+      }, 1000) as unknown as number
+
+      isInitializedRef.current = true
+      console.log("Audio engine initialized successfully")
+    } catch (error) {
+      console.error("Error initializing audio engine:", error)
     }
-
-    // Resume context (browser policy)
-    ensureContextRunning()
-
-    // Set up periodic check to ensure context stays running in Safari
-    const contextCheckInterval = setInterval(ensureContextRunning, 1000)
-
-    // Create master gain
-    const masterGain = ctx.createGain()
-    masterGain.gain.value = masterVolume
-    masterGain.connect(ctx.destination)
-    masterGainRef.current = masterGain
-
-    // Create reverb
-    const convolver = ctx.createConvolver()
-    createReverbImpulse(ctx, convolver)
-    convolver.connect(masterGain)
-    reverbRef.current = convolver
-
-    // Set up periodic cleanup of finished nodes
-    cleanupTimerRef.current = window.setInterval(() => {
-      cleanupFinishedNodes()
-    }, 1000) as unknown as number
 
     // Clean up function
     return () => {
-      // Cancel context check interval
-      clearInterval(contextCheckInterval)
-
       // Cancel any scheduled second tones
       if (secondSchedulerRef.current !== null) {
         clearInterval(secondSchedulerRef.current)
@@ -140,23 +137,45 @@ export default function AudioEngine({
       // Stop all active sources
       cleanupAllNodes()
 
-      // Close context after a short delay to allow sounds to fade out
-      if (ctx && ctx.state !== "closed") {
+      // Disconnect local master gain
+      if (localMasterGainRef.current) {
         try {
-          ctx.close()
+          localMasterGainRef.current.disconnect()
+          localMasterGainRef.current = null
         } catch (e) {
-          console.error("Error closing AudioContext:", e)
+          console.error("Error disconnecting local master gain:", e)
         }
       }
+
+      // Disconnect reverb
+      if (reverbRef.current) {
+        try {
+          reverbRef.current.disconnect()
+          reverbRef.current = null
+        } catch (e) {
+          console.error("Error disconnecting reverb:", e)
+        }
+      }
+
+      isInitializedRef.current = false
+    }
+  }, [audioContext, masterGain, masterVolume, ensureAudioContextRunning])
+
+  // Update master volume when it changes
+  useEffect(() => {
+    if (localMasterGainRef.current) {
+      localMasterGainRef.current.gain.value = masterVolume
     }
   }, [masterVolume])
 
   // Safely stop and disconnect an audio source and its gain node
   const safelyStopAndDisconnectSource = (source: OscillatorNode, gainNode?: GainNode | null) => {
+    if (!audioContext) return
+
     try {
       if (gainNode) {
         // Fade out to avoid clicks
-        const now = audioContextRef.current?.currentTime || 0
+        const now = audioContext.currentTime
         gainNode.gain.linearRampToValueAtTime(0, now + 0.05)
 
         // Schedule disconnection
@@ -193,9 +212,9 @@ export default function AudioEngine({
 
   // Clean up finished nodes
   const cleanupFinishedNodes = () => {
-    if (!audioContextRef.current) return
+    if (!audioContext) return
 
-    const now = audioContextRef.current.currentTime
+    const now = audioContext.currentTime
     const nodesToKeep: Array<{ source: OscillatorNode; endTime?: number; gainNode?: GainNode }> = []
 
     activeSourcesRef.current.forEach(({ source, endTime, gainNode }) => {
@@ -235,12 +254,10 @@ export default function AudioEngine({
     startTime = 0,
     duration?: number,
   ) => {
-    if (!audioContextRef.current) return null
+    if (!audioContext) return null
 
     // Ensure context is running
-    if (audioContextRef.current.state === "suspended") {
-      audioContextRef.current.resume().catch((err) => console.error("Error resuming AudioContext:", err))
-    }
+    ensureAudioContextRunning()
 
     return createSynthesizedNote(instrument, note, volume, destination, startTime, duration)
   }
@@ -254,60 +271,97 @@ export default function AudioEngine({
     startTime = 0,
     duration?: number,
   ) => {
-    if (!audioContextRef.current) return null
+    if (!audioContext) return null
 
-    const ctx = audioContextRef.current
     const frequency = NOTE_FREQUENCIES[note] || 440 // Default to A4 if note not found
-    const now = ctx.currentTime + startTime
+    const now = audioContext.currentTime + startTime
+
+    // For Safari, simplify the audio graph for better performance
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
 
     switch (instrument) {
       case "ambient": {
-        // Create a warm ambient pad with multiple oscillators and subtle modulation
-        // with enhanced audibility while maintaining ambient quality
+        // Create a simpler ambient pad for Safari
+        if (isSafari) {
+          // Primary oscillator (sine wave)
+          const oscillator = audioContext.createOscillator()
+          oscillator.type = "sine"
+          oscillator.frequency.value = frequency
 
+          // Create gain node for envelope
+          const gainNode = audioContext.createGain()
+          gainNode.gain.setValueAtTime(0, now)
+          gainNode.gain.linearRampToValueAtTime(volume, now + 0.1)
+
+          if (duration) {
+            gainNode.gain.setValueAtTime(volume, now + duration - 0.2)
+            gainNode.gain.linearRampToValueAtTime(0.001, now + duration)
+          }
+
+          // Connect nodes
+          oscillator.connect(gainNode)
+          gainNode.connect(destination)
+
+          // Start oscillator
+          oscillator.start(now)
+          if (duration) {
+            oscillator.stop(now + duration)
+          }
+
+          // Add to active sources for cleanup
+          activeSourcesRef.current.push({
+            source: oscillator,
+            endTime: duration ? now + duration : undefined,
+            gainNode,
+          })
+
+          return { source: oscillator, gainNode }
+        }
+
+        // Full implementation for other browsers
         // Primary oscillator (sine wave for warmth)
-        const oscillator1 = ctx.createOscillator()
+        const oscillator1 = audioContext.createOscillator()
         oscillator1.type = "sine"
         oscillator1.frequency.value = frequency
 
         // Secondary oscillator (triangle wave for harmonics)
-        const oscillator2 = ctx.createOscillator()
+        const oscillator2 = audioContext.createOscillator()
         oscillator2.type = "triangle"
         oscillator2.frequency.value = frequency
 
         // Slightly detuned oscillator for richness
-        const oscillator3 = ctx.createOscillator()
+        const oscillator3 = audioContext.createOscillator()
         oscillator3.type = "sine"
         oscillator3.frequency.value = frequency * 1.003 // Slight detune
 
         // Sub oscillator for depth
-        const subOscillator = ctx.createOscillator()
+        const subOscillator = audioContext.createOscillator()
         subOscillator.type = "sine"
         subOscillator.frequency.value = frequency / 2 // One octave down
 
         // Higher harmonic for audibility
-        const highOscillator = ctx.createOscillator()
+        const highOscillator = audioContext.createOscillator()
         highOscillator.type = "sine"
         highOscillator.frequency.value = frequency * 2 // One octave up
 
         // Create gain nodes for each oscillator
-        const gain1 = ctx.createGain()
+        const gain1 = audioContext.createGain()
         gain1.gain.value = volume * 0.6 // Increased from 0.5
 
-        const gain2 = ctx.createGain()
+        const gain2 = audioContext.createGain()
         gain2.gain.value = volume * 0.4 // Increased from 0.3
 
-        const gain3 = ctx.createGain()
+        const gain3 = audioContext.createGain()
         gain3.gain.value = volume * 0.25 // Increased from 0.2
 
-        const subGain = ctx.createGain()
+        const subGain = audioContext.createGain()
         subGain.gain.value = volume * 0.3 // Increased from 0.25
 
-        const highGain = ctx.createGain()
+        const highGain = audioContext.createGain()
         highGain.gain.value = volume * 0.15 // Subtle high frequency component
 
         // Create a master gain for the pad
-        const masterPadGain = ctx.createGain()
+        const masterPadGain = audioContext.createGain()
         masterPadGain.gain.setValueAtTime(0, now)
         masterPadGain.gain.linearRampToValueAtTime(volume * 1.5, now + 1.5) // Increased overall volume by 50%
 
@@ -317,38 +371,38 @@ export default function AudioEngine({
         }
 
         // Create a lowpass filter for warmth
-        const filter = ctx.createBiquadFilter()
+        const filter = audioContext.createBiquadFilter()
         filter.type = "lowpass"
         filter.frequency.value = 2000 // Increased from 1200 for more presence
         filter.Q.value = 0.7 // Increased from 0.5 for more resonance
 
         // Create a highpass filter to remove muddy low frequencies
-        const highpass = ctx.createBiquadFilter()
+        const highpass = audioContext.createBiquadFilter()
         highpass.type = "highpass"
         highpass.frequency.value = 80
         highpass.Q.value = 0.5
 
         // Create a peak filter to enhance presence
-        const peakFilter = ctx.createBiquadFilter()
+        const peakFilter = audioContext.createBiquadFilter()
         peakFilter.type = "peaking"
         peakFilter.frequency.value = frequency * 1.5
         peakFilter.Q.value = 2
         peakFilter.gain.value = 6 // dB boost
 
         // Create LFO for subtle filter modulation
-        const lfo = ctx.createOscillator()
+        const lfo = audioContext.createOscillator()
         lfo.type = "sine"
         lfo.frequency.value = 0.2 // Very slow modulation
 
-        const lfoGain = ctx.createGain()
+        const lfoGain = audioContext.createGain()
         lfoGain.gain.value = 300 // Increased modulation amount
 
         // Create a subtle amplitude modulation for pulsing effect
-        const amplitudeLfo = ctx.createOscillator()
+        const amplitudeLfo = audioContext.createOscillator()
         amplitudeLfo.type = "sine"
         amplitudeLfo.frequency.value = 0.3 // Slow pulsing
 
-        const amplitudeLfoGain = ctx.createGain()
+        const amplitudeLfoGain = audioContext.createGain()
         amplitudeLfoGain.gain.value = 0.1 // Subtle effect
 
         // Connect LFO to filter
@@ -422,15 +476,39 @@ export default function AudioEngine({
       }
 
       case "harp": {
-        // Create a pizzicato string sound with gentle pluck and natural decay
+        // Simplified version for Safari
+        if (isSafari) {
+          const oscillator = audioContext.createOscillator()
+          oscillator.type = "triangle"
+          oscillator.frequency.value = frequency
 
+          const gainNode = audioContext.createGain()
+          gainNode.gain.setValueAtTime(0, now)
+          gainNode.gain.linearRampToValueAtTime(volume, now + 0.01)
+          gainNode.gain.exponentialRampToValueAtTime(volume * 0.2, now + 0.5)
+
+          const stopTime = duration ? now + duration : now + 2
+          gainNode.gain.exponentialRampToValueAtTime(0.001, stopTime)
+
+          oscillator.connect(gainNode)
+          gainNode.connect(destination)
+
+          oscillator.start(now)
+          oscillator.stop(stopTime)
+
+          activeSourcesRef.current.push({ source: oscillator, endTime: stopTime, gainNode })
+
+          return { source: oscillator, gainNode }
+        }
+
+        // Full implementation for other browsers
         // Main oscillator (triangle for warmth with less harshness than sawtooth)
-        const oscillator = ctx.createOscillator()
+        const oscillator = audioContext.createOscillator()
         oscillator.type = "triangle"
         oscillator.frequency.value = frequency
 
         // Create gain node for envelope
-        const gainNode = ctx.createGain()
+        const gainNode = audioContext.createGain()
 
         // Pizzicato-like envelope: very fast attack, quick initial decay, then longer tail
         gainNode.gain.setValueAtTime(0, now)
@@ -450,11 +528,11 @@ export default function AudioEngine({
 
         // Create and connect harmonic oscillators
         const harmonicOscs = harmonics.map((h) => {
-          const osc = ctx.createOscillator()
+          const osc = audioContext.createOscillator()
           osc.type = "sine" // Sine for gentler harmonics
           osc.frequency.value = h.freq
 
-          const harmonicGain = ctx.createGain()
+          const harmonicGain = audioContext.createGain()
           harmonicGain.gain.value = volume * h.gain
 
           osc.connect(harmonicGain)
@@ -474,13 +552,13 @@ export default function AudioEngine({
         oscillator.frequency.exponentialRampToValueAtTime(frequency, now + 0.01) // Quick bend to correct pitch
 
         // Create filter for warm tone shaping
-        const filter = ctx.createBiquadFilter()
+        const filter = audioContext.createBiquadFilter()
         filter.type = "lowpass"
         filter.frequency.value = 2500 // Warmer than guitar but not too dark
         filter.Q.value = 0.5
 
         // Create a second filter for body resonance
-        const bodyFilter = ctx.createBiquadFilter()
+        const bodyFilter = audioContext.createBiquadFilter()
         bodyFilter.type = "peaking"
         bodyFilter.frequency.value = frequency * 1.2 // Slight resonance above the fundamental
         bodyFilter.Q.value = 2
@@ -503,13 +581,38 @@ export default function AudioEngine({
       }
 
       case "vibraphone": {
+        // Simplified version for Safari
+        if (isSafari) {
+          const oscillator = audioContext.createOscillator()
+          oscillator.type = "sine"
+          oscillator.frequency.value = frequency
+
+          const gainNode = audioContext.createGain()
+          gainNode.gain.setValueAtTime(0, now)
+          gainNode.gain.linearRampToValueAtTime(volume, now + 0.02)
+
+          const stopTime = duration ? now + duration : now + 1
+          gainNode.gain.exponentialRampToValueAtTime(0.001, stopTime)
+
+          oscillator.connect(gainNode)
+          gainNode.connect(destination)
+
+          oscillator.start(now)
+          oscillator.stop(stopTime)
+
+          activeSourcesRef.current.push({ source: oscillator, endTime: stopTime, gainNode })
+
+          return { source: oscillator, gainNode }
+        }
+
+        // Full implementation for other browsers
         // Create oscillator
-        const oscillator = ctx.createOscillator()
+        const oscillator = audioContext.createOscillator()
         oscillator.type = "sine"
         oscillator.frequency.value = frequency
 
         // Create gain node
-        const gainNode = ctx.createGain()
+        const gainNode = audioContext.createGain()
 
         // Fast attack, long sustain with vibrato
         gainNode.gain.setValueAtTime(0, now)
@@ -526,24 +629,24 @@ export default function AudioEngine({
         }
 
         // Create a second oscillator for harmonic richness
-        const harmonicOsc = ctx.createOscillator()
+        const harmonicOsc = audioContext.createOscillator()
         harmonicOsc.type = "sine"
         harmonicOsc.frequency.value = frequency * 2 // One octave higher
 
         // Create gain node for harmonic
-        const harmonicGain = ctx.createGain()
+        const harmonicGain = audioContext.createGain()
         harmonicGain.gain.value = volume * 0.2 // Subtle harmonic
 
         // Add vibrato for vibraphone
-        const vibratoOsc = ctx.createOscillator()
+        const vibratoOsc = audioContext.createOscillator()
         vibratoOsc.frequency.value = 5 // 5 Hz vibrato
-        const vibratoGain = ctx.createGain()
+        const vibratoGain = audioContext.createGain()
         vibratoGain.gain.value = 3 // Vibrato depth
         vibratoOsc.connect(vibratoGain)
         vibratoGain.connect(oscillator.frequency)
 
         // Create filter for metallic tone shaping
-        const filter = ctx.createBiquadFilter()
+        const filter = audioContext.createBiquadFilter()
         filter.type = "bandpass"
         filter.frequency.value = frequency * 2
         filter.Q.value = 2
@@ -582,24 +685,19 @@ export default function AudioEngine({
 
   // Update sounds when time or settings change
   useEffect(() => {
-    if (!audioContextRef.current) return
-
-    const ctx = audioContextRef.current
-    const masterGain = masterGainRef.current
-    const reverb = reverbRef.current
-
-    if (!ctx || !masterGain || !reverb) return
+    if (!audioContext || !localMasterGainRef.current || !reverbRef.current || !isInitializedRef.current) return
 
     // Ensure context is running
-    if (ctx.state === "suspended") {
-      ctx.resume().catch((err) => console.error("Error resuming AudioContext:", err))
-    }
+    ensureAudioContextRunning()
 
     // Clear any existing second scheduler
     if (secondSchedulerRef.current !== null) {
       clearInterval(secondSchedulerRef.current)
       secondSchedulerRef.current = null
     }
+
+    const localMasterGain = localMasterGainRef.current
+    const reverb = reverbRef.current
 
     // Handle reference tone (C4 ambient pad with reverb)
     if (soundToggles.reference) {
@@ -612,13 +710,13 @@ export default function AudioEngine({
           reverb,
         ) || { source: null, gainNode: null }
 
-        referenceSourceRef.current = source
-        referenceGainRef.current = gainNode
+        if (source) referenceSourceRef.current = source
+        if (gainNode) referenceGainRef.current = gainNode
       } else if (referenceGainRef.current) {
         // Update the volume if the reference tone is already playing
         referenceGainRef.current.gain.linearRampToValueAtTime(
           soundVolumes.reference * masterVolume * 1.2,
-          ctx.currentTime + 0.1,
+          audioContext.currentTime + 0.1,
         )
       }
     } else {
@@ -651,14 +749,17 @@ export default function AudioEngine({
           reverb,
         ) || { source: null, gainNode: null }
 
-        hourSourceRef.current = source
-        hourGainRef.current = gainNode
+        if (source) hourSourceRef.current = source
+        if (gainNode) hourGainRef.current = gainNode
 
         // Update the last played hour
         lastPlayedHourRef.current = hours
       } else if (hourGainRef.current) {
         // Update the volume if the hour tone is already playing
-        hourGainRef.current.gain.linearRampToValueAtTime(soundVolumes.hour * masterVolume * 1.2, ctx.currentTime + 0.1)
+        hourGainRef.current.gain.linearRampToValueAtTime(
+          soundVolumes.hour * masterVolume * 1.2,
+          audioContext.currentTime + 0.1,
+        )
       }
     } else {
       // Stop the hour tone if it exists and the toggle is off
@@ -681,41 +782,47 @@ export default function AudioEngine({
     if (soundToggles.minute) {
       if (playTens && minuteTens > 0) {
         const minuteTensNote = getMinuteTensNote(minuteTens)
-        playNote("harp", minuteTensNote, soundVolumes.minute * masterVolume, masterGain, 0, 1)
+        playNote("harp", minuteTensNote, soundVolumes.minute * masterVolume, localMasterGain, 0, 1)
       } else if (!playTens && minuteOnes > 0) {
         const minuteOnesNote = getMinuteOnesNote(minuteOnes)
-        playNote("harp", minuteOnesNote, soundVolumes.minute * masterVolume, masterGain, 0, 1)
+        playNote("harp", minuteOnesNote, soundVolumes.minute * masterVolume, localMasterGain, 0, 1)
       }
     }
 
     // Schedule second tones (vibraphone)
     if (soundToggles.second) {
       scheduleSecondTones(
-        ctx,
         seconds,
         milliseconds,
-        masterGain,
+        localMasterGain,
         soundToggles.second,
         soundVolumes.second * masterVolume,
       )
     }
-  }, [hours, minutes, seconds, masterVolume, soundToggles, soundVolumes])
+  }, [
+    audioContext,
+    hours,
+    minutes,
+    seconds,
+    milliseconds,
+    masterVolume,
+    soundToggles,
+    soundVolumes,
+    ensureAudioContextRunning,
+  ])
 
   // Schedule second tones to alternate quickly
   const scheduleSecondTones = (
-    ctx: AudioContext,
     currentSecond: number,
     milliseconds: number,
     destination: AudioNode,
     enabled: boolean,
     volume: number,
   ) => {
-    if (!enabled) return
+    if (!enabled || !audioContext) return
 
     // Ensure context is running
-    if (ctx.state === "suspended") {
-      ctx.resume().catch((err) => console.error("Error resuming AudioContext:", err))
-    }
+    ensureAudioContextRunning()
 
     // Extract tens and ones digits from seconds
     const secondTens = Math.floor(currentSecond / 10)
@@ -739,7 +846,7 @@ export default function AudioEngine({
 
     // Set up interval to schedule tones every quarter second
     secondSchedulerRef.current = window.setInterval(() => {
-      if (!ctx || ctx.state === "closed") {
+      if (!audioContext || audioContext.state === "closed") {
         if (secondSchedulerRef.current !== null) {
           clearInterval(secondSchedulerRef.current)
           secondSchedulerRef.current = null
@@ -748,9 +855,7 @@ export default function AudioEngine({
       }
 
       // Ensure context is running
-      if (ctx.state === "suspended") {
-        ctx.resume().catch((err) => console.error("Error resuming AudioContext:", err))
-      }
+      ensureAudioContextRunning()
 
       const now = new Date()
       const currentMs = now.getMilliseconds()

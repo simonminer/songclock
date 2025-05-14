@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, type KeyboardEvent, useCallback } from "react"
+import { useState, useEffect, useRef, type KeyboardEvent } from "react"
 import { Play, Pause, Settings, HelpCircle, Music, EyeOff } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -10,6 +10,8 @@ import AudioEngine from "@/components/audio-engine"
 import MusicalStaff from "@/components/musical-staff"
 import SettingsModal from "@/components/settings-modal"
 import HelpModal from "@/components/help-modal"
+import { useAudioContext } from "@/components/audio-context-provider"
+import { Providers } from "./providers"
 
 export default function SongClock() {
   // Running time state (for display and audio)
@@ -44,6 +46,9 @@ export default function SongClock() {
   const [showMusicStaff, setShowMusicStaff] = useState(false)
   const [announcement, setAnnouncement] = useState("")
 
+  // Get the audio context
+  const { ensureAudioContextRunning } = useAudioContext()
+
   // Ref to track if we're currently resetting
   const isResettingRef = useRef(false)
 
@@ -52,20 +57,6 @@ export default function SongClock() {
   const helpButtonRef = useRef<HTMLButtonElement>(null)
   const playButtonRef = useRef<HTMLButtonElement>(null)
   const staffToggleButtonRef = useRef<HTMLButtonElement>(null)
-
-  // Add this function inside the SongClock component, before the return statement
-  const ensureAudioContext = useCallback(() => {
-    // This will trigger audio context resumption in browsers that require user interaction
-    const tempContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    tempContext
-      .resume()
-      .then(() => {
-        tempContext.close()
-      })
-      .catch((err) => {
-        console.error("Error with temporary audio context:", err)
-      })
-  }, [])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -131,9 +122,9 @@ export default function SongClock() {
   }, [useManualTime, manualTimeBase, manualTimeOffset])
 
   // Modify the togglePlay function to ensure audio context is resumed
-  const togglePlay = () => {
+  const togglePlay = async () => {
     // Ensure audio context is resumed on user interaction
-    ensureAudioContext()
+    await ensureAudioContextRunning()
 
     const newIsPlaying = !isPlaying
     setIsPlaying(newIsPlaying)
@@ -352,208 +343,196 @@ export default function SongClock() {
   // Get current year for footer
   const currentYear = new Date().getFullYear()
 
-  // Add this useEffect after the other useEffects
+  // Ensure audio context is running when the component mounts
   useEffect(() => {
-    // Add event listeners to ensure audio context is resumed on user interaction
-    const handleUserInteraction = () => {
-      ensureAudioContext()
-    }
-
-    // Add event listeners for common user interactions
-    document.addEventListener("click", handleUserInteraction, { once: true })
-    document.addEventListener("touchstart", handleUserInteraction, { once: true })
-    document.addEventListener("keydown", handleUserInteraction, { once: true })
-
-    return () => {
-      document.removeEventListener("click", handleUserInteraction)
-      document.removeEventListener("touchstart", handleUserInteraction)
-      document.removeEventListener("keydown", handleUserInteraction)
-    }
-  }, [ensureAudioContext])
+    ensureAudioContextRunning()
+  }, [ensureAudioContextRunning])
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-900 text-white">
-      {/* Live region for screen reader announcements */}
-      <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {announcement}
-      </div>
-
-      <header className="border-b border-white/10 bg-gray-800/50 p-4">
-        <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
-          <div className="flex h-full items-center justify-center sm:justify-start">
-            <Image
-              src="/images/songclock-logo-light.png"
-              alt="Song Clock - Listen to the time."
-              width={300}
-              height={70}
-              className="h-auto w-auto max-h-16"
-              priority
-            />
-          </div>
-          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3">
-            <Button
-              ref={playButtonRef}
-              onClick={togglePlay}
-              variant="outline"
-              size="lg"
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              aria-label={isPlaying ? "Pause sound" : "Play sound"}
-            >
-              {isPlaying ? (
-                <>
-                  <Pause className="mr-2 h-5 w-5" />
-                  Pause
-                </>
-              ) : (
-                <>
-                  <Play className="mr-2 h-5 w-5" />
-                  Play
-                </>
-              )}
-            </Button>
-            <Button
-              ref={helpButtonRef}
-              onClick={() => setIsHelpOpen(true)}
-              variant="outline"
-              className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              aria-label="Open help"
-            >
-              <HelpCircle className="h-5 w-5" />
-              <span className="hidden sm:inline">Help</span>
-            </Button>
-            <Button
-              ref={settingsButtonRef}
-              onClick={() => setIsSettingsOpen(true)}
-              variant="outline"
-              className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              aria-label="Open settings"
-            >
-              <Settings className="h-5 w-5" />
-              <span className="hidden sm:inline">Settings</span>
-            </Button>
-          </div>
+    <Providers>
+      <div className="flex min-h-screen flex-col bg-gray-900 text-white">
+        {/* Live region for screen reader announcements */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {announcement}
         </div>
-      </header>
 
-      <main className="flex-1 w-full py-5">
-        {/* Main Content Section - Clock and Musical Staff */}
-        <div className="flex flex-col gap-5">
-          {/* Clock Section - Converted to a button */}
-          <button
-            className="mx-4 flex w-auto flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 p-6 transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-            onClick={togglePlay}
-            aria-label={`Clock panel. Click to ${isPlaying ? "pause" : "play"} sound`}
-            type="button"
-          >
-            <AnalogClock hours={displayHours} minutes={displayMinutes} seconds={displaySeconds} />
-            <div className="mt-4 text-center text-2xl font-mono">
-              {formatTwoDigits(displayHours)}:{formatTwoDigits(displayMinutes)}:{formatTwoDigits(displaySeconds)}
-            </div>
-          </button>
-
-          {/* Staff Toggle Button */}
-          <div className="mx-4 flex justify-start w-auto">
-            <Button
-              ref={staffToggleButtonRef}
-              onClick={toggleMusicStaff}
-              variant="outline"
-              size="lg"
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              aria-label={showMusicStaff ? "Hide score" : "Show score"}
-            >
-              {showMusicStaff ? (
-                <>
-                  <EyeOff className="mr-2 h-5 w-5" />
-                  Hide Score
-                </>
-              ) : (
-                <>
-                  <Music className="mr-2 h-5 w-5" />
-                  Show Score
-                </>
-              )}
-            </Button>
-          </div>
-
-          {/* Musical Staff Section - Conditionally rendered */}
-          {showMusicStaff && (
-            <div className="mx-4 flex items-center justify-center w-auto">
-              <MusicalStaff
-                hours={displayHours}
-                minutes={displayMinutes}
-                seconds={displaySeconds}
-                isPlaying={isPlaying}
-                soundToggles={soundToggles}
+        <header className="border-b border-white/10 bg-gray-800/50 p-4">
+          <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+            <div className="flex h-full items-center justify-center sm:justify-start">
+              <Image
+                src="/images/songclock-logo-light.png"
+                alt="Song Clock - Listen to the time."
+                width={300}
+                height={70}
+                className="h-auto w-auto max-h-16"
+                priority
               />
             </div>
-          )}
-        </div>
-      </main>
+            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3">
+              <Button
+                ref={playButtonRef}
+                onClick={togglePlay}
+                variant="outline"
+                size="lg"
+                className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                aria-label={isPlaying ? "Pause sound" : "Play sound"}
+              >
+                {isPlaying ? (
+                  <>
+                    <Pause className="mr-2 h-5 w-5" />
+                    Pause
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-5 w-5" />
+                    Play
+                  </>
+                )}
+              </Button>
+              <Button
+                ref={helpButtonRef}
+                onClick={() => setIsHelpOpen(true)}
+                variant="outline"
+                className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                aria-label="Open help"
+              >
+                <HelpCircle className="h-5 w-5" />
+                <span className="hidden sm:inline">Help</span>
+              </Button>
+              <Button
+                ref={settingsButtonRef}
+                onClick={() => setIsSettingsOpen(true)}
+                variant="outline"
+                className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                aria-label="Open settings"
+              >
+                <Settings className="h-5 w-5" />
+                <span className="hidden sm:inline">Settings</span>
+              </Button>
+            </div>
+          </div>
+        </header>
 
-      {/* Footer */}
-      <footer className="mt-5 border-t border-white/10 bg-gray-800/50 py-4 px-4 text-center text-sm text-gray-400">
-        &copy; {currentYear}{" "}
-        <Link
-          href="https://pedalpoint.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-white hover:text-white/80 underline underline-offset-2 transition-colors"
-        >
-          Pedal Point Solutions
-        </Link>
-      </footer>
+        <main className="flex-1 w-full py-5">
+          {/* Main Content Section - Clock and Musical Staff */}
+          <div className="flex flex-col gap-5">
+            {/* Clock Section - Converted to a button */}
+            <button
+              className="mx-4 flex w-auto flex-col items-center justify-center rounded-lg border border-white/10 bg-white/5 p-6 transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              onClick={togglePlay}
+              aria-label={`Clock panel. Click to ${isPlaying ? "pause" : "play"} sound`}
+              type="button"
+            >
+              <AnalogClock hours={displayHours} minutes={displayMinutes} seconds={displaySeconds} />
+              <div className="mt-4 text-center text-2xl font-mono">
+                {formatTwoDigits(displayHours)}:{formatTwoDigits(displayMinutes)}:{formatTwoDigits(displaySeconds)}
+              </div>
+            </button>
 
-      {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => {
-          setIsSettingsOpen(false)
-          // Return focus to settings button when modal closes
-          if (settingsButtonRef.current) {
-            settingsButtonRef.current.focus()
-          }
-        }}
-        masterVolume={masterVolume}
-        setMasterVolume={handleMasterVolumeChange}
-        soundToggles={soundToggles}
-        toggleSoundComponent={toggleSoundComponent}
-        soundVolumes={soundVolumes}
-        handleSoundVolumeChange={handleSoundVolumeChange}
-        handleSliderKeyDown={handleSliderKeyDown}
-        useManualTime={useManualTime}
-        toggleTimeMode={toggleTimeMode}
-        inputValues={inputValues}
-        handleManualTimeChange={handleManualTimeChange}
-        handleTimeIncrement={handleTimeIncrement}
-        resetToCurrentTime={resetToCurrentTime}
-        formatTwoDigits={formatTwoDigits}
-        formatPercentage={formatPercentage}
-      />
+            {/* Staff Toggle Button */}
+            <div className="mx-4 flex justify-start w-auto">
+              <Button
+                ref={staffToggleButtonRef}
+                onClick={toggleMusicStaff}
+                variant="outline"
+                size="lg"
+                className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                aria-label={showMusicStaff ? "Hide score" : "Show score"}
+              >
+                {showMusicStaff ? (
+                  <>
+                    <EyeOff className="mr-2 h-5 w-5" />
+                    Hide Score
+                  </>
+                ) : (
+                  <>
+                    <Music className="mr-2 h-5 w-5" />
+                    Show Score
+                  </>
+                )}
+              </Button>
+            </div>
 
-      {/* Help Modal */}
-      <HelpModal
-        isOpen={isHelpOpen}
-        onClose={() => {
-          setIsHelpOpen(false)
-          // Return focus to help button when modal closes
-          if (helpButtonRef.current) {
-            helpButtonRef.current.focus()
-          }
-        }}
-      />
+            {/* Musical Staff Section - Conditionally rendered */}
+            {showMusicStaff && (
+              <div className="mx-4 flex items-center justify-center w-auto">
+                <MusicalStaff
+                  hours={displayHours}
+                  minutes={displayMinutes}
+                  seconds={displaySeconds}
+                  isPlaying={isPlaying}
+                  soundToggles={soundToggles}
+                />
+              </div>
+            )}
+          </div>
+        </main>
 
-      {isPlaying && (
-        <AudioEngine
-          key={`${displayHours}-${displayMinutes}-${displaySeconds}-${isPlaying}`}
-          hours={displayHours}
-          minutes={displayMinutes}
-          seconds={displaySeconds}
-          milliseconds={displayMilliseconds}
+        {/* Footer */}
+        <footer className="mt-5 border-t border-white/10 bg-gray-800/50 py-4 px-4 text-center text-sm text-gray-400">
+          &copy; {currentYear}{" "}
+          <Link
+            href="https://pedalpoint.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white hover:text-white/80 underline underline-offset-2 transition-colors"
+          >
+            Pedal Point Solutions
+          </Link>
+        </footer>
+
+        {/* Settings Modal */}
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => {
+            setIsSettingsOpen(false)
+            // Return focus to settings button when modal closes
+            if (settingsButtonRef.current) {
+              settingsButtonRef.current.focus()
+            }
+          }}
           masterVolume={masterVolume}
+          setMasterVolume={handleMasterVolumeChange}
           soundToggles={soundToggles}
+          toggleSoundComponent={toggleSoundComponent}
           soundVolumes={soundVolumes}
+          handleSoundVolumeChange={handleSoundVolumeChange}
+          handleSliderKeyDown={handleSliderKeyDown}
+          useManualTime={useManualTime}
+          toggleTimeMode={toggleTimeMode}
+          inputValues={inputValues}
+          handleManualTimeChange={handleManualTimeChange}
+          handleTimeIncrement={handleTimeIncrement}
+          resetToCurrentTime={resetToCurrentTime}
+          formatTwoDigits={formatTwoDigits}
+          formatPercentage={formatPercentage}
         />
-      )}
-    </div>
+
+        {/* Help Modal */}
+        <HelpModal
+          isOpen={isHelpOpen}
+          onClose={() => {
+            setIsHelpOpen(false)
+            // Return focus to help button when modal closes
+            if (helpButtonRef.current) {
+              helpButtonRef.current.focus()
+            }
+          }}
+        />
+
+        {isPlaying && (
+          <AudioEngine
+            key={`${displayHours}-${displayMinutes}-${displaySeconds}-${isPlaying}`}
+            hours={displayHours}
+            minutes={displayMinutes}
+            seconds={displaySeconds}
+            milliseconds={displayMilliseconds}
+            masterVolume={masterVolume}
+            soundToggles={soundToggles}
+            soundVolumes={soundVolumes}
+          />
+        )}
+      </div>
+    </Providers>
   )
 }

@@ -19,7 +19,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>{/* VexFlow is now imported directly in the component */}</head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        {/* Wrap the entire app with the Providers component */}
+        {children}
+      </body>
     </html>
   )
 }
