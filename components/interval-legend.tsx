@@ -13,18 +13,18 @@ export default function IntervalLegend({ alwaysExpanded = false }: IntervalLegen
   const [isOpen, setIsOpen] = useState(alwaysExpanded)
 
   const hourIntervals = [
-    { hour: 1, interval: "Unison (C4)", description: "Same as reference tone" },
-    { hour: 2, interval: "Major 2nd (D4)", description: "Whole step up" },
-    { hour: 3, interval: "Major 3rd (E4)", description: "Bright, major quality" },
-    { hour: 4, interval: "Perfect 4th (F4)", description: "Stable, foundational" },
-    { hour: 5, interval: "Perfect 5th (G4)", description: "Strong, consonant" },
-    { hour: 6, interval: "Major 6th (A4)", description: "Harmonious, sweet" },
-    { hour: 7, interval: "Major 7th (B4)", description: "Tense, leading tone" },
-    { hour: 8, interval: "Octave (C5)", description: "Same note, higher register" },
-    { hour: 9, interval: "Major 9th (D5)", description: "Compound 2nd" },
-    { hour: 10, interval: "Major 10th (E5)", description: "Compound 3rd" },
-    { hour: 11, interval: "Perfect 11th (F5)", description: "Compound 4th" },
-    { hour: 12, interval: "Perfect 12th (G5)", description: "Compound 5th" },
+    { hour: 1, interval: "Unison (C3)", description: "Same as reference tone" },
+    { hour: 2, interval: "Major 2nd (D3)", description: "Whole step up" },
+    { hour: 3, interval: "Major 3rd (E3)", description: "Bright, major quality" },
+    { hour: 4, interval: "Perfect 4th (F3)", description: "Stable, foundational" },
+    { hour: 5, interval: "Perfect 5th (G3)", description: "Strong, consonant" },
+    { hour: 6, interval: "Major 6th (A3)", description: "Harmonious, sweet" },
+    { hour: 7, interval: "Major 7th (B3)", description: "Tense, leading tone" },
+    { hour: 8, interval: "Octave (C4)", description: "Same note, higher register" },
+    { hour: 9, interval: "Major 9th (D4)", description: "Compound 2nd" },
+    { hour: 10, interval: "Major 10th (E4)", description: "Compound 3rd" },
+    { hour: 11, interval: "Perfect 11th (F4)", description: "Compound 4th" },
+    { hour: 12, interval: "Perfect 12th (G4)", description: "Compound 5th" },
   ]
 
   const minuteIntervals = [
@@ -61,7 +61,7 @@ export default function IntervalLegend({ alwaysExpanded = false }: IntervalLegen
           onClick={() => setIsOpen(!isOpen)}
           className="flex w-full items-center justify-between text-left"
         >
-          <span className="text-lg font-medium">Interval Reference Guide</span>
+          <span className="text-lg font-medium">How to Listen to the Time</span>
           {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
         </Button>
       )}
@@ -77,6 +77,10 @@ export default function IntervalLegend({ alwaysExpanded = false }: IntervalLegen
           </TabsList>
 
           <TabsContent value="hours" className="mt-2">
+            <p className="mb-2 text-sm text-gray-300">
+              Each hour is represented as a specific musical interval relative to the reference tone (C3). The hour tone
+              plays continuously as an ambient pad with reverb.
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse" aria-labelledby="hour-intervals-heading">
                 <caption id="hour-intervals-heading" className="sr-only">
@@ -110,74 +114,158 @@ export default function IntervalLegend({ alwaysExpanded = false }: IntervalLegen
 
           <TabsContent value="minutes" className="mt-2">
             <p className="mb-2 text-sm text-gray-300">
-              The tens and ones digits of the minute each play their corresponding scale degree, alternating every
-              second.
+              The tens and ones digits of the minute are each represented by their own notes in the C-Major scale. These
+              tones alternate every second, with the tens digit playing on even seconds and the ones digit playing on
+              odd seconds.
             </p>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse" aria-labelledby="minute-notes-heading">
-                <caption id="minute-notes-heading" className="sr-only">
-                  Minute Notes Reference
-                </caption>
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th scope="col" className="py-2 px-2 text-left">
-                      Digit
-                    </th>
-                    <th scope="col" className="py-2 px-2 text-left">
-                      Note
-                    </th>
-                    <th scope="col" className="py-2 px-2 text-left">
-                      Description
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {minuteIntervals.map((item) => (
-                    <tr key={item.digit} className="border-b border-white/10">
-                      <td className="py-2 px-2">{item.digit}</td>
-                      <td className="py-2 px-2">{item.note}</td>
-                      <td className="py-2 px-2 text-gray-300">{item.description}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <h4 className="text-sm font-medium mb-2">Tens Digit (0-5)</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse" aria-labelledby="minute-tens-heading">
+                    <caption id="minute-tens-heading" className="sr-only">
+                      Minute Tens Digit Notes
+                    </caption>
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Digit
+                        </th>
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Note
+                        </th>
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Description
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {minuteIntervals.slice(0, 6).map((item) => (
+                        <tr key={`tens-${item.digit}`} className="border-b border-white/10">
+                          <td className="py-2 px-2">{item.digit}</td>
+                          <td className="py-2 px-2">{item.note}</td>
+                          <td className="py-2 px-2 text-gray-300">{item.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-2">Ones Digit (0-9)</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse" aria-labelledby="minute-ones-heading">
+                    <caption id="minute-ones-heading" className="sr-only">
+                      Minute Ones Digit Notes
+                    </caption>
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Digit
+                        </th>
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Note
+                        </th>
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Description
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {minuteIntervals.map((item) => (
+                        <tr key={`ones-${item.digit}`} className="border-b border-white/10">
+                          <td className="py-2 px-2">{item.digit}</td>
+                          <td className="py-2 px-2">{item.note}</td>
+                          <td className="py-2 px-2 text-gray-300">{item.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
+            <p className="text-sm text-gray-300">
+              <strong>Example:</strong> For 35 minutes, the tens digit (3) plays E4 on even seconds, and the ones digit
+              (5) plays G4 on odd seconds.
+            </p>
           </TabsContent>
 
           <TabsContent value="seconds" className="mt-2">
             <p className="mb-2 text-sm text-gray-300">
-              The tens and ones digits of the second each play their corresponding scale degree as pizzicato tones,
-              alternating four times per second (0.25s each).
+              The tens and ones digits of the second are each represented by their own notes in a higher octave of the
+              C-Major scale. These tones alternate rapidly (four times per second), with the tens digit playing on even
+              quarter-seconds and the ones digit playing on odd quarter-seconds.
             </p>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse" aria-labelledby="second-notes-heading">
-                <caption id="second-notes-heading" className="sr-only">
-                  Second Notes Reference
-                </caption>
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th scope="col" className="py-2 px-2 text-left">
-                      Digit
-                    </th>
-                    <th scope="col" className="py-2 px-2 text-left">
-                      Note
-                    </th>
-                    <th scope="col" className="py-2 px-2 text-left">
-                      Description
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {secondIntervals.map((item) => (
-                    <tr key={item.digit} className="border-b border-white/10">
-                      <td className="py-2 px-2">{item.digit}</td>
-                      <td className="py-2 px-2">{item.note}</td>
-                      <td className="py-2 px-2 text-gray-300">{item.description}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <h4 className="text-sm font-medium mb-2">Tens Digit (0-5)</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse" aria-labelledby="second-tens-heading">
+                    <caption id="second-tens-heading" className="sr-only">
+                      Second Tens Digit Notes
+                    </caption>
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Digit
+                        </th>
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Note
+                        </th>
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Description
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {secondIntervals.slice(0, 6).map((item) => (
+                        <tr key={`tens-${item.digit}`} className="border-b border-white/10">
+                          <td className="py-2 px-2">{item.digit}</td>
+                          <td className="py-2 px-2">{item.note}</td>
+                          <td className="py-2 px-2 text-gray-300">{item.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium mb-2">Ones Digit (0-9)</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse" aria-labelledby="second-ones-heading">
+                    <caption id="second-ones-heading" className="sr-only">
+                      Second Ones Digit Notes
+                    </caption>
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Digit
+                        </th>
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Note
+                        </th>
+                        <th scope="col" className="py-2 px-2 text-left">
+                          Description
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {secondIntervals.map((item) => (
+                        <tr key={`ones-${item.digit}`} className="border-b border-white/10">
+                          <td className="py-2 px-2">{item.digit}</td>
+                          <td className="py-2 px-2">{item.note}</td>
+                          <td className="py-2 px-2 text-gray-300">{item.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
+            <p className="text-sm text-gray-300">
+              <strong>Example:</strong> For 42 seconds, the tens digit (4) plays F5 on even quarter-seconds, and the
+              ones digit (2) plays D5 on odd quarter-seconds.
+            </p>
           </TabsContent>
         </Tabs>
       )}

@@ -108,9 +108,9 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
         className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-white/10 bg-gray-900 p-6 shadow-xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 id="help-title" className="text-2xl font-bold" ref={headingRef} tabIndex={-1}>
+          <h1 id="help-title" className="text-2xl font-bold" ref={headingRef} tabIndex={-1}>
             Help
-          </h2>
+          </h1>
           <Button
             ref={initialFocusRef}
             onClick={onClose}
@@ -125,55 +125,102 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
 
         <div className="space-y-6">
           <section>
-            <h3 className="mb-2 text-xl font-medium">How to Use SongClock</h3>
+            <h2 className="mb-2 text-xl font-medium">What is this?</h2>
             <p className="mb-4 text-gray-300">
-              SongClock is an ear training tool that helps you learn to tell time by listening to musical intervals.
-              Each component of time (hours, minutes, seconds) is represented by different musical tones.
+              Song Clock is an accessible tool that helps you tell time through sound. It translates the current time
+              into musical intervals and patterns, making it useful for:
             </p>
+            <ul className="list-disc space-y-1 pl-5 text-gray-300">
+              <li>Ear training for musicians</li>
+              <li>Learning to recognize musical intervals</li>
+              <li>Creating an auditory representation of time</li>
+              <li>Accessibility for those with visual impairments</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-xl font-medium">Basic Usage</h2>
             <ol className="list-decimal space-y-2 pl-5 text-gray-300">
               <li>
                 <strong>Press Play</strong> to start hearing the musical representation of the current time.
               </li>
               <li>
-                <strong>Listen to the tones</strong> - each part of the time has a distinct sound and pattern.
+                <strong>Listen to the different sounds</strong> - each part of the time (hours, minutes, seconds) has a
+                distinct sound.
+              </li>
+              <li>
+                <strong>Show Score</strong> to see the musical notation for the current time.
               </li>
               <li>
                 <strong>Use the Settings</strong> to adjust volumes or set a manual time to practice specific times.
-              </li>
-              <li>
-                <strong>Watch the musical notation</strong> to see how the sounds are represented visually.
               </li>
             </ol>
           </section>
 
           <section>
-            <h3 className="mb-2 text-xl font-medium">Sound Components</h3>
-            <ul className="list-disc space-y-1 pl-5 text-gray-300">
-              <li>
-                <strong>Reference Tone:</strong> Ambient pad playing C3 with reverb (continuous background)
-              </li>
-              <li>
-                <strong>Hour Tone:</strong> Ambient pad playing intervals in the C-Major scale based on the hour
-              </li>
-              <li>
-                <strong>Minute Tones:</strong> Piano-like tones for alternating tens and ones digits of minutes
-              </li>
-              <li>
-                <strong>Second Tones:</strong> Vibraphone-like tones for alternating tens and ones digits of seconds
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h3 className="mb-2 text-xl font-medium">Interval Reference Guide</h3>
+            <h2 className="mb-2 text-xl font-medium">How to Listen to the Time</h2>
             <p className="mb-4 text-gray-300">
-              The guide below shows the musical intervals used for each hour, minute, and second.
+              Song Clock represents time through musical intervals. Each component of time (hours, minutes, seconds) is
+              translated into specific musical notes and patterns:
             </p>
             <IntervalLegend alwaysExpanded />
           </section>
 
           <section>
-            <h3 className="mb-2 text-xl font-medium">Keyboard Shortcuts</h3>
+            <h2 className="mb-2 text-xl font-medium">Controls</h2>
+            <div className="space-y-3 text-gray-300">
+              <div>
+                <h3 className="font-medium">Main Controls:</h3>
+                <ul className="list-disc pl-5">
+                  <li>
+                    <strong>Play/Pause</strong> - Start or stop the sound
+                  </li>
+                  <li>
+                    <strong>Show/Hide Score</strong> - Toggle the musical notation display
+                  </li>
+                  <li>
+                    <strong>Settings</strong> - Adjust volume levels and time settings
+                  </li>
+                  <li>
+                    <strong>Help</strong> - Open this help panel
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-medium">Sound Components:</h3>
+                <ul className="list-disc pl-5">
+                  <li>
+                    <strong>Reference Tone:</strong> Ambient pad playing C3 (continuous background)
+                  </li>
+                  <li>
+                    <strong>Hour Tone:</strong> Ambient pad playing intervals in the C-Major scale based on the hour
+                  </li>
+                  <li>
+                    <strong>Minute Tones:</strong> Harp-like tones for alternating tens and ones digits of minutes
+                  </li>
+                  <li>
+                    <strong>Second Tones:</strong> Vibraphone-like tones for alternating tens and ones digits of seconds
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-medium">Settings Options:</h3>
+                <ul className="list-disc pl-5">
+                  <li>
+                    <strong>Sound Controls</strong> - Toggle and adjust volume for each sound component
+                  </li>
+                  <li>
+                    <strong>Manual Time Control</strong> - Set a specific time to practice
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-xl font-medium">Keyboard Shortcuts</h2>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-gray-300">
                 <thead>
@@ -193,7 +240,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
                     <td className="py-2 px-4">
                       <kbd className="bg-gray-800 px-2 py-1 rounded">s</kbd>
                     </td>
-                    <td className="py-2 px-4">Show/Hide music staff</td>
+                    <td className="py-2 px-4">Show/Hide score</td>
                   </tr>
                   <tr className="border-b border-white/10">
                     <td className="py-2 px-4">

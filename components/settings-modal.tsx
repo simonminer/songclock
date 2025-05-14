@@ -268,9 +268,9 @@ export default function SettingsModal({
         className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-white/10 bg-gray-900 p-6 shadow-xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 id="settings-title" className="text-2xl font-bold" ref={headingRef} tabIndex={-1}>
+          <h1 id="settings-title" className="text-2xl font-bold" ref={headingRef} tabIndex={-1}>
             Settings
-          </h2>
+          </h1>
           <Button
             ref={initialFocusRef}
             onClick={onClose}
@@ -286,7 +286,7 @@ export default function SettingsModal({
         <div className="space-y-8">
           {/* Sound Controls */}
           <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-            <h3 className="mb-4 text-xl font-medium">Sound Controls</h3>
+            <h2 className="mb-4 text-xl font-medium">Sound Controls</h2>
 
             <div className="grid gap-4">
               <div className="grid grid-cols-[3rem_1fr_auto] items-center gap-3">
@@ -533,7 +533,10 @@ export default function SettingsModal({
           {/* Time Controls - Moved below Sound Controls */}
           <div className="rounded-lg border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-medium">Manual Time Control</h3>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-medium">Manual Time Control</h2>
+                <span className="bg-amber-600/20 text-amber-400 text-xs px-2 py-0.5 rounded-md font-medium">BETA</span>
+              </div>
               <Switch
                 id="manual-time-toggle"
                 checked={useManualTime}

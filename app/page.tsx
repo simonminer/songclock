@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, type KeyboardEvent } from "react"
+import { useState, useEffect, useRef, type KeyboardEvent, useCallback } from "react"
 import { Play, Pause, Settings, HelpCircle, Music, EyeOff } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -52,6 +52,20 @@ export default function SongClock() {
   const helpButtonRef = useRef<HTMLButtonElement>(null)
   const playButtonRef = useRef<HTMLButtonElement>(null)
   const staffToggleButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Add this function inside the SongClock component, before the return statement
+  const ensureAudioContext = useCallback(() => {
+    // This will trigger audio context resumption in browsers that require user interaction
+    const tempContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    tempContext
+      .resume()
+      .then(() => {
+        tempContext.close()
+      })
+      .catch((err) => {
+        console.error("Error with temporary audio context:", err)
+      })
+  }, [])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -116,7 +130,11 @@ export default function SongClock() {
     return () => clearInterval(interval)
   }, [useManualTime, manualTimeBase, manualTimeOffset])
 
+  // Modify the togglePlay function to ensure audio context is resumed
   const togglePlay = () => {
+    // Ensure audio context is resumed on user interaction
+    ensureAudioContext()
+
     const newIsPlaying = !isPlaying
     setIsPlaying(newIsPlaying)
 
@@ -129,7 +147,7 @@ export default function SongClock() {
     setShowMusicStaff(newShowMusicStaff)
 
     // Announce state change to screen readers
-    setAnnouncement(newShowMusicStaff ? "Music staff on" : "Music staff off")
+    setAnnouncement(newShowMusicStaff ? "Score on" : "Score off")
   }
 
   const handleMasterVolumeChange = (value: number) => {
@@ -334,6 +352,25 @@ export default function SongClock() {
   // Get current year for footer
   const currentYear = new Date().getFullYear()
 
+  // Add this useEffect after the other useEffects
+  useEffect(() => {
+    // Add event listeners to ensure audio context is resumed on user interaction
+    const handleUserInteraction = () => {
+      ensureAudioContext()
+    }
+
+    // Add event listeners for common user interactions
+    document.addEventListener("click", handleUserInteraction, { once: true })
+    document.addEventListener("touchstart", handleUserInteraction, { once: true })
+    document.addEventListener("keydown", handleUserInteraction, { once: true })
+
+    return () => {
+      document.removeEventListener("click", handleUserInteraction)
+      document.removeEventListener("touchstart", handleUserInteraction)
+      document.removeEventListener("keydown", handleUserInteraction)
+    }
+  }, [ensureAudioContext])
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-900 text-white">
       {/* Live region for screen reader announcements */}
@@ -371,27 +408,6 @@ export default function SongClock() {
                 <>
                   <Play className="mr-2 h-5 w-5" />
                   Play
-                </>
-              )}
-            </Button>
-            <Button
-              ref={staffToggleButtonRef}
-              onClick={toggleMusicStaff}
-              variant="outline"
-              className="flex items-center gap-2 border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              aria-label={showMusicStaff ? "Hide music staff" : "Show music staff"}
-            >
-              {showMusicStaff ? (
-                <>
-                  <EyeOff className="h-5 w-5" />
-                  <span className="hidden sm:inline">Hide Staff</span>
-                  <span className="sm:hidden">Staff</span>
-                </>
-              ) : (
-                <>
-                  <Music className="h-5 w-5" />
-                  <span className="hidden sm:inline">Show Staff</span>
-                  <span className="sm:hidden">Staff</span>
                 </>
               )}
             </Button>
@@ -434,6 +450,30 @@ export default function SongClock() {
               {formatTwoDigits(displayHours)}:{formatTwoDigits(displayMinutes)}:{formatTwoDigits(displaySeconds)}
             </div>
           </button>
+
+          {/* Staff Toggle Button */}
+          <div className="mx-4 flex justify-start w-auto">
+            <Button
+              ref={staffToggleButtonRef}
+              onClick={toggleMusicStaff}
+              variant="outline"
+              size="lg"
+              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              aria-label={showMusicStaff ? "Hide score" : "Show score"}
+            >
+              {showMusicStaff ? (
+                <>
+                  <EyeOff className="mr-2 h-5 w-5" />
+                  Hide Score
+                </>
+              ) : (
+                <>
+                  <Music className="mr-2 h-5 w-5" />
+                  Show Score
+                </>
+              )}
+            </Button>
+          </div>
 
           {/* Musical Staff Section - Conditionally rendered */}
           {showMusicStaff && (

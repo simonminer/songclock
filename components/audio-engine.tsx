@@ -61,11 +61,14 @@ export default function AudioEngine({
   const audioContextRef = useRef<AudioContext | null>(null)
   const reverbRef = useRef<ConvolverNode | null>(null)
   const masterGainRef = useRef<GainNode | null>(null)
-  const activeSourcesRef = useRef<OscillatorNode[]>([])
+  const activeSourcesRef = useRef<Array<{ source: OscillatorNode; endTime?: number; gainNode?: GainNode }>>([])
   const secondSchedulerRef = useRef<number | null>(null)
   const referenceSourceRef = useRef<OscillatorNode | null>(null)
+  const referenceGainRef = useRef<GainNode | null>(null)
   const hourSourceRef = useRef<OscillatorNode | null>(null)
+  const hourGainRef = useRef<GainNode | null>(null)
   const lastPlayedHourRef = useRef<number | null>(null)
+  const cleanupTimerRef = useRef<number | null>(null)
 
   // Initialize audio context
   useEffect(() => {
@@ -73,10 +76,18 @@ export default function AudioEngine({
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
     audioContextRef.current = ctx
 
-    // Resume context (browser policy)
-    if (ctx.state === "suspended") {
-      ctx.resume()
+    // Function to ensure context is running
+    const ensureContextRunning = () => {
+      if (ctx.state === "suspended") {
+        ctx.resume().catch((err) => console.error("Error resuming AudioContext:", err))
+      }
     }
+
+    // Resume context (browser policy)
+    ensureContextRunning()
+
+    // Set up periodic check to ensure context stays running in Safari
+    const contextCheckInterval = setInterval(ensureContextRunning, 1000)
 
     // Create master gain
     const masterGain = ctx.createGain()
@@ -90,51 +101,130 @@ export default function AudioEngine({
     convolver.connect(masterGain)
     reverbRef.current = convolver
 
+    // Set up periodic cleanup of finished nodes
+    cleanupTimerRef.current = window.setInterval(() => {
+      cleanupFinishedNodes()
+    }, 1000) as unknown as number
+
     // Clean up function
     return () => {
+      // Cancel context check interval
+      clearInterval(contextCheckInterval)
+
       // Cancel any scheduled second tones
       if (secondSchedulerRef.current !== null) {
         clearInterval(secondSchedulerRef.current)
+        secondSchedulerRef.current = null
       }
 
-      // Stop reference and hour tones
+      // Cancel cleanup timer
+      if (cleanupTimerRef.current !== null) {
+        clearInterval(cleanupTimerRef.current)
+        cleanupTimerRef.current = null
+      }
+
+      // Stop reference tone
       if (referenceSourceRef.current) {
-        try {
-          referenceSourceRef.current.stop()
-        } catch (e) {
-          // Ignore errors from already stopped sources
-        }
+        safelyStopAndDisconnectSource(referenceSourceRef.current, referenceGainRef.current)
         referenceSourceRef.current = null
+        referenceGainRef.current = null
       }
 
+      // Stop hour tone
       if (hourSourceRef.current) {
-        try {
-          hourSourceRef.current.stop()
-        } catch (e) {
-          // Ignore errors from already stopped sources
-        }
+        safelyStopAndDisconnectSource(hourSourceRef.current, hourGainRef.current)
         hourSourceRef.current = null
+        hourGainRef.current = null
       }
 
       // Stop all active sources
-      activeSourcesRef.current.forEach((source) => {
+      cleanupAllNodes()
+
+      // Close context after a short delay to allow sounds to fade out
+      if (ctx && ctx.state !== "closed") {
         try {
+          ctx.close()
+        } catch (e) {
+          console.error("Error closing AudioContext:", e)
+        }
+      }
+    }
+  }, [masterVolume])
+
+  // Safely stop and disconnect an audio source and its gain node
+  const safelyStopAndDisconnectSource = (source: OscillatorNode, gainNode?: GainNode | null) => {
+    try {
+      if (gainNode) {
+        // Fade out to avoid clicks
+        const now = audioContextRef.current?.currentTime || 0
+        gainNode.gain.linearRampToValueAtTime(0, now + 0.05)
+
+        // Schedule disconnection
+        setTimeout(() => {
+          try {
+            gainNode.disconnect()
+          } catch (e) {
+            // Ignore errors from already disconnected nodes
+          }
+        }, 60)
+      }
+
+      // Stop the source after a short delay to allow fade out
+      setTimeout(() => {
+        try {
+          if (source.frequency) {
+            source.frequency.value = 0
+          }
           source.stop()
         } catch (e) {
           // Ignore errors from already stopped sources
         }
-      })
 
-      // Close context after a short delay to allow sounds to fade out
-      setTimeout(() => {
         try {
-          ctx.close()
+          source.disconnect()
         } catch (e) {
-          // Ignore errors from already closed context
+          // Ignore errors from already disconnected sources
         }
-      }, 100)
+      }, 60)
+    } catch (e) {
+      console.error("Error stopping audio source:", e)
     }
-  }, [masterVolume])
+  }
+
+  // Clean up finished nodes
+  const cleanupFinishedNodes = () => {
+    if (!audioContextRef.current) return
+
+    const now = audioContextRef.current.currentTime
+    const nodesToKeep: Array<{ source: OscillatorNode; endTime?: number; gainNode?: GainNode }> = []
+
+    activeSourcesRef.current.forEach(({ source, endTime, gainNode }) => {
+      if (endTime && now > endTime + 0.1) {
+        // Node has finished playing, disconnect it
+        try {
+          if (gainNode) {
+            gainNode.disconnect()
+          }
+          source.disconnect()
+        } catch (e) {
+          // Ignore errors from already disconnected nodes
+        }
+      } else {
+        // Keep this node
+        nodesToKeep.push({ source, endTime, gainNode })
+      }
+    })
+
+    activeSourcesRef.current = nodesToKeep
+  }
+
+  // Clean up all nodes
+  const cleanupAllNodes = () => {
+    activeSourcesRef.current.forEach(({ source, gainNode }) => {
+      safelyStopAndDisconnectSource(source, gainNode)
+    })
+    activeSourcesRef.current = []
+  }
 
   // Play a synthesized note
   const playNote = (
@@ -146,6 +236,11 @@ export default function AudioEngine({
     duration?: number,
   ) => {
     if (!audioContextRef.current) return null
+
+    // Ensure context is running
+    if (audioContextRef.current.state === "suspended") {
+      audioContextRef.current.resume().catch((err) => console.error("Error resuming AudioContext:", err))
+    }
 
     return createSynthesizedNote(instrument, note, volume, destination, startTime, duration)
   }
@@ -297,29 +392,33 @@ export default function AudioEngine({
         lfo.start(now)
         amplitudeLfo.start(now)
 
-        // Stop oscillators if duration is provided
-        if (duration) {
-          oscillator1.stop(now + duration)
-          oscillator2.stop(now + duration)
-          oscillator3.stop(now + duration)
-          subOscillator.stop(now + duration)
-          highOscillator.stop(now + duration)
-          lfo.stop(now + duration)
-          amplitudeLfo.stop(now + duration)
-        }
+        // Calculate end time for cleanup
+        const endTime = duration ? now + duration : undefined
 
         // Add to active sources for cleanup
         activeSourcesRef.current.push(
-          oscillator1,
-          oscillator2,
-          oscillator3,
-          subOscillator,
-          highOscillator,
-          lfo,
-          amplitudeLfo,
+          { source: oscillator1, endTime, gainNode: masterPadGain },
+          { source: oscillator2, endTime },
+          { source: oscillator3, endTime },
+          { source: subOscillator, endTime },
+          { source: highOscillator, endTime },
+          { source: lfo, endTime },
+          { source: amplitudeLfo, endTime },
         )
 
-        return oscillator1 // Return primary oscillator as reference
+        // Stop oscillators if duration is provided
+        if (duration) {
+          const stopTime = now + duration
+          oscillator1.stop(stopTime)
+          oscillator2.stop(stopTime)
+          oscillator3.stop(stopTime)
+          subOscillator.stop(stopTime)
+          highOscillator.stop(stopTime)
+          lfo.stop(stopTime)
+          amplitudeLfo.stop(stopTime)
+        }
+
+        return { source: oscillator1, gainNode: masterPadGain } // Return primary oscillator and gain node as reference
       }
 
       case "harp": {
@@ -338,11 +437,9 @@ export default function AudioEngine({
         gainNode.gain.linearRampToValueAtTime(volume, now + 0.003) // Very fast attack
         gainNode.gain.exponentialRampToValueAtTime(volume * 0.4, now + 0.1) // Quick initial decay
         gainNode.gain.exponentialRampToValueAtTime(volume * 0.2, now + 0.5) // Mid decay
-        if (duration) {
-          gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration)
-        } else {
-          gainNode.gain.exponentialRampToValueAtTime(0.001, now + 2.5) // Keep the same decay length
-        }
+
+        const stopTime = duration ? now + duration : now + 2.5
+        gainNode.gain.exponentialRampToValueAtTime(0.001, stopTime)
 
         // Create just a few harmonics for a cleaner, less intense sound
         // Fewer harmonics than guitar but more than vibraphone
@@ -364,11 +461,10 @@ export default function AudioEngine({
           harmonicGain.connect(gainNode)
 
           osc.start(now)
-          if (duration) {
-            osc.stop(now + duration)
-          } else {
-            osc.stop(now + 2.5)
-          }
+          osc.stop(stopTime)
+
+          // Add to active sources for cleanup
+          activeSourcesRef.current.push({ source: osc, endTime: stopTime })
 
           return osc
         })
@@ -398,16 +494,12 @@ export default function AudioEngine({
 
         // Start main oscillator
         oscillator.start(now)
-        if (duration) {
-          oscillator.stop(now + duration)
-        } else {
-          oscillator.stop(now + 2.5) // Keep the same duration
-        }
+        oscillator.stop(stopTime)
 
         // Add to active sources for cleanup
-        activeSourcesRef.current.push(oscillator, ...harmonicOscs)
+        activeSourcesRef.current.push({ source: oscillator, endTime: stopTime, gainNode })
 
-        return oscillator
+        return { source: oscillator, gainNode }
       }
 
       case "vibraphone": {
@@ -422,12 +514,15 @@ export default function AudioEngine({
         // Fast attack, long sustain with vibrato
         gainNode.gain.setValueAtTime(0, now)
         gainNode.gain.linearRampToValueAtTime(volume, now + 0.02)
+
+        const stopTime = duration ? now + duration : now + 1.5
+
         if (duration) {
           gainNode.gain.setValueAtTime(volume * 0.8, now + duration - 0.2)
-          gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration)
+          gainNode.gain.exponentialRampToValueAtTime(0.001, stopTime)
         } else {
           gainNode.gain.exponentialRampToValueAtTime(volume * 0.7, now + 0.2)
-          gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.5)
+          gainNode.gain.exponentialRampToValueAtTime(0.001, stopTime)
         }
 
         // Create a second oscillator for harmonic richness
@@ -466,20 +561,18 @@ export default function AudioEngine({
         vibratoOsc.start(now)
 
         // Stop oscillators
-        if (duration) {
-          oscillator.stop(now + duration)
-          harmonicOsc.stop(now + duration)
-          vibratoOsc.stop(now + duration)
-        } else {
-          oscillator.stop(now + 1.5)
-          harmonicOsc.stop(now + 1.5)
-          vibratoOsc.stop(now + 1.5)
-        }
+        oscillator.stop(stopTime)
+        harmonicOsc.stop(stopTime)
+        vibratoOsc.stop(stopTime)
 
         // Add to active sources for cleanup
-        activeSourcesRef.current.push(oscillator, harmonicOsc, vibratoOsc)
+        activeSourcesRef.current.push(
+          { source: oscillator, endTime: stopTime, gainNode },
+          { source: harmonicOsc, endTime: stopTime },
+          { source: vibratoOsc, endTime: stopTime },
+        )
 
-        return oscillator
+        return { source: oscillator, gainNode }
       }
 
       default:
@@ -497,6 +590,11 @@ export default function AudioEngine({
 
     if (!ctx || !masterGain || !reverb) return
 
+    // Ensure context is running
+    if (ctx.state === "suspended") {
+      ctx.resume().catch((err) => console.error("Error resuming AudioContext:", err))
+    }
+
     // Clear any existing second scheduler
     if (secondSchedulerRef.current !== null) {
       clearInterval(secondSchedulerRef.current)
@@ -507,22 +605,28 @@ export default function AudioEngine({
     if (soundToggles.reference) {
       // Only create a new reference tone if one isn't already playing
       if (!referenceSourceRef.current) {
-        referenceSourceRef.current = playNote(
+        const { source, gainNode } = playNote(
           "ambient",
-          "C4",
+          "C3",
           soundVolumes.reference * masterVolume * 1.2, // Increased volume multiplier
           reverb,
+        ) || { source: null, gainNode: null }
+
+        referenceSourceRef.current = source
+        referenceGainRef.current = gainNode
+      } else if (referenceGainRef.current) {
+        // Update the volume if the reference tone is already playing
+        referenceGainRef.current.gain.linearRampToValueAtTime(
+          soundVolumes.reference * masterVolume * 1.2,
+          ctx.currentTime + 0.1,
         )
       }
     } else {
       // Stop the reference tone if it exists and the toggle is off
       if (referenceSourceRef.current) {
-        try {
-          referenceSourceRef.current.stop()
-        } catch (e) {
-          // Ignore errors from already stopped sources
-        }
+        safelyStopAndDisconnectSource(referenceSourceRef.current, referenceGainRef.current)
         referenceSourceRef.current = null
+        referenceGainRef.current = null
       }
     }
 
@@ -534,33 +638,34 @@ export default function AudioEngine({
       if (lastPlayedHourRef.current !== hours || !hourSourceRef.current) {
         // Stop the previous hour tone if it exists
         if (hourSourceRef.current) {
-          try {
-            hourSourceRef.current.stop()
-          } catch (e) {
-            // Ignore errors from already stopped sources
-          }
+          safelyStopAndDisconnectSource(hourSourceRef.current, hourGainRef.current)
+          hourSourceRef.current = null
+          hourGainRef.current = null
         }
 
         // Create a new hour tone
-        hourSourceRef.current = playNote(
+        const { source, gainNode } = playNote(
           "ambient",
           hourNote,
           soundVolumes.hour * masterVolume * 1.2, // Increased volume multiplier
           reverb,
-        )
+        ) || { source: null, gainNode: null }
+
+        hourSourceRef.current = source
+        hourGainRef.current = gainNode
 
         // Update the last played hour
         lastPlayedHourRef.current = hours
+      } else if (hourGainRef.current) {
+        // Update the volume if the hour tone is already playing
+        hourGainRef.current.gain.linearRampToValueAtTime(soundVolumes.hour * masterVolume * 1.2, ctx.currentTime + 0.1)
       }
     } else {
       // Stop the hour tone if it exists and the toggle is off
       if (hourSourceRef.current) {
-        try {
-          hourSourceRef.current.stop()
-        } catch (e) {
-          // Ignore errors from already stopped sources
-        }
+        safelyStopAndDisconnectSource(hourSourceRef.current, hourGainRef.current)
         hourSourceRef.current = null
+        hourGainRef.current = null
         lastPlayedHourRef.current = null
       }
     }
@@ -607,6 +712,11 @@ export default function AudioEngine({
   ) => {
     if (!enabled) return
 
+    // Ensure context is running
+    if (ctx.state === "suspended") {
+      ctx.resume().catch((err) => console.error("Error resuming AudioContext:", err))
+    }
+
     // Extract tens and ones digits from seconds
     const secondTens = Math.floor(currentSecond / 10)
     const secondOnes = currentSecond % 10
@@ -616,9 +726,6 @@ export default function AudioEngine({
 
     // Calculate which quarter of the second we're in (0-3)
     const quarterSecond = Math.floor(msInSecond / 250)
-
-    // Calculate time until next quarter second
-    const timeToNextQuarter = (250 - (msInSecond % 250)) / 1000
 
     // Schedule the first tone immediately
     const isFirstTens = quarterSecond === 0 || quarterSecond === 2
@@ -635,8 +742,14 @@ export default function AudioEngine({
       if (!ctx || ctx.state === "closed") {
         if (secondSchedulerRef.current !== null) {
           clearInterval(secondSchedulerRef.current)
+          secondSchedulerRef.current = null
         }
         return
+      }
+
+      // Ensure context is running
+      if (ctx.state === "suspended") {
+        ctx.resume().catch((err) => console.error("Error resuming AudioContext:", err))
       }
 
       const now = new Date()
@@ -687,19 +800,19 @@ export default function AudioEngine({
   // Get hour note based on hour value
   const getHourNote = (hour: number): string => {
     const hourNotes = [
-      "C4", // 12 o'clock
-      "C4", // 1 o'clock
-      "D4", // 2 o'clock
-      "E4", // 3 o'clock
-      "F4", // 4 o'clock
-      "G4", // 5 o'clock
-      "A4", // 6 o'clock
-      "B4", // 7 o'clock
-      "C5", // 8 o'clock
-      "D5", // 9 o'clock
-      "E5", // 10 o'clock
-      "F5", // 11 o'clock
-      "G5", // 12 o'clock
+      "C3", // 12 o'clock
+      "C3", // 1 o'clock
+      "D3", // 2 o'clock
+      "E3", // 3 o'clock
+      "F3", // 4 o'clock
+      "G3", // 5 o'clock
+      "A3", // 6 o'clock
+      "B3", // 7 o'clock
+      "C4", // 8 o'clock
+      "D4", // 9 o'clock
+      "E4", // 10 o'clock
+      "F4", // 11 o'clock
+      "G4", // 12 o'clock
     ]
 
     return hourNotes[hour === 0 ? 12 : hour]

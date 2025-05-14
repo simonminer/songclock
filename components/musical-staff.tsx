@@ -27,12 +27,17 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
   const secondTens = Math.floor(seconds / 10)
   const secondOnes = seconds % 10
 
-  // Define colors to match analog clock hands
-  const hourColor = "rgba(255, 100, 100, 0.9)" // Red
-  const minuteColor = "rgba(100, 255, 100, 0.9)" // Green
-  const secondColor = "rgba(100, 150, 255, 0.9)" // Blue
-  const referenceColor = "rgba(255, 255, 255, 0.9)" // White for reference
-  const defaultColor = "rgba(255, 255, 255, 0.9)" // White for staff, clefs, etc.
+  // Define colors to match analog clock hands with improved contrast for accessibility
+  const hourColor = "rgba(255, 130, 130, 1)" // Brighter red
+  const minuteColor = "rgba(130, 255, 130, 1)" // Brighter green
+  const secondColor = "rgba(130, 180, 255, 1)" // Brighter blue
+  const referenceColor = "rgba(255, 255, 255, 1)" // White for reference (full opacity)
+  const defaultColor = "rgba(255, 255, 255, 1)" // White for staff, clefs, etc. (full opacity)
+
+  // Format numbers as two digits (e.g., 1 -> "01")
+  const formatTwoDigits = (num: number): string => {
+    return num.toString().padStart(2, "0")
+  }
 
   // Re-render the staff every 2 seconds
   useEffect(() => {
@@ -124,40 +129,45 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
       const minuteLabelY = minuteStaveY + 100
       const hourLabelY = hourStaveY + 100
 
+      // Get note names for hour and reference
+      const hourNoteName = getHourNoteName(hours)
+      const referenceNoteName = "C3"
+
       // Add staff labels below each staff at the left end with note names and numeric values
       // Second staff label (blue) with current seconds value
       context.save()
       context.fillStyle = secondColor
       context.font = "bold 14px Arial"
-      context.fillText("Seconds ♬", staveX, secondLabelY)
-      // Add seconds value underneath
-      context.font = "12px Arial"
-      context.fillText(`${seconds}s`, staveX, secondLabelY + 20)
+      context.fillText(`Seconds ♬ (${formatTwoDigits(seconds)})`, staveX, secondLabelY)
       context.restore()
 
       // Minute staff label (green) with current minutes value
       context.save()
       context.fillStyle = minuteColor
       context.font = "bold 14px Arial"
-      context.fillText("Minutes ♩", staveX, minuteLabelY)
-      // Add minutes value underneath
-      context.font = "12px Arial"
-      context.fillText(`${minutes}m`, staveX, minuteLabelY + 20)
+      context.fillText(`Minutes ♩ (${formatTwoDigits(minutes)})`, staveX, minuteLabelY)
       context.restore()
 
-      // Hour staff label (red) with hour number
+      // Hour staff label (red) with hour number and note name
       context.save()
       context.fillStyle = hourColor
       context.font = "bold 14px Arial"
-      context.fillText(`Hour ○ (${hours})`, staveX, hourLabelY)
-      // Add hour value underneath
-      context.font = "12px Arial"
-      context.fillText(`${hours}h`, staveX, hourLabelY + 20)
 
-      // Reference label (white) without note name
+      // Add hour note name next to the label if hour sounds are enabled
+      if (soundToggles.hour) {
+        context.fillText(`Hour ○ (${formatTwoDigits(hours)}) - ${hourNoteName}`, staveX, hourLabelY)
+      } else {
+        context.fillText(`Hour ○ (${formatTwoDigits(hours)})`, staveX, hourLabelY)
+      }
+
+      // Reference label (white) with note name next to the label
       context.fillStyle = referenceColor
       context.font = "14px Arial"
-      context.fillText("Reference", staveX + 120, hourLabelY)
+      if (soundToggles.reference) {
+        context.fillText(`Reference - ${referenceNoteName}`, staveX + 220, hourLabelY)
+      } else {
+        context.fillText("Reference", staveX + 220, hourLabelY)
+      }
       context.restore()
 
       if (!isPlaying) {
@@ -414,40 +424,13 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
         secondVoice.draw(context, secondStave)
 
         // Calculate note positions for labels
-        // For hour staff - whole notes
-        const hourNotePositions = calculateNotePositions(staveX, staveWidth, 1)
-
         // For minute staff - quarter notes
         const minuteNotePositions = calculateNotePositions(staveX, staveWidth, 4)
 
         // For second staff - sixteenth notes
         const secondNotePositions = calculateNotePositions(staveX, staveWidth, 16)
 
-        // Add note name labels
-        // For hour notes
-        if (soundToggles.reference) {
-          const referenceNoteName = "C3"
-          context.save()
-          context.fillStyle = referenceColor
-          context.font = "12px Arial"
-          context.textAlign = "center"
-          context.fillText(referenceNoteName, hourNotePositions[0], hourLabelY)
-          context.restore()
-        }
-
-        if (soundToggles.hour) {
-          const hourNoteName = getHourNoteName(hours)
-          context.save()
-          context.fillStyle = hourColor
-          context.font = "12px Arial"
-          context.textAlign = "center"
-          // If reference is also enabled, offset the hour note label slightly
-          const xPos = soundToggles.reference ? hourNotePositions[0] + 30 : hourNotePositions[0]
-          context.fillText(hourNoteName, xPos, hourLabelY)
-          context.restore()
-        }
-
-        // For minute notes
+        // For minute notes - add note names under the notes
         if (soundToggles.minute) {
           // First quarter note - 10s
           if (minuteTens > 0) {
@@ -474,7 +457,7 @@ export default function MusicalStaff({ hours, minutes, seconds, isPlaying, sound
           }
         }
 
-        // For second notes
+        // For second notes - add note names under the notes
         if (soundToggles.second) {
           // Label all 16 notes
           for (let i = 0; i < 16; i++) {
