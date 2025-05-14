@@ -74,6 +74,35 @@ export default function AudioEngine({
   const lastPlayedHourRef = useRef<number | null>(null)
   const cleanupTimerRef = useRef<number | null>(null)
   const isInitializedRef = useRef<boolean>(false)
+  const minuteNotesRef = useRef<Array<{ source: OscillatorNode; gainNode: GainNode }>>([])
+  const secondNotesRef = useRef<Array<{ source: OscillatorNode; gainNode: GainNode }>>([])
+
+  // Add these refs after the other refs
+  const prevSoundTogglesRef = useRef<{
+    reference: boolean
+    hour: boolean
+    minute: boolean
+    second: boolean
+  }>({
+    reference: false,
+    hour: false,
+    minute: false,
+    second: false,
+  })
+
+  const prevSoundVolumesRef = useRef<{
+    reference: number
+    hour: number
+    minute: number
+    second: number
+  }>({
+    reference: 0,
+    hour: 0,
+    minute: 0,
+    second: 0,
+  })
+
+  const prevMasterVolumeRef = useRef<number>(0)
 
   // Initialize audio processing chain
   useEffect(() => {
@@ -168,7 +197,283 @@ export default function AudioEngine({
     }
   }, [masterVolume])
 
-  // Safely stop and disconnect an audio source and its gain node
+  // REFERENCE TONE - Completely isolated in its own effect
+  useEffect(() => {
+    if (!audioContext || !reverbRef.current || !isInitializedRef.current) return
+
+    // Handle reference tone (C3 ambient pad with reverb)
+    if (soundToggles.reference) {
+      // Only create a new reference tone if one isn't already playing
+      if (!referenceSourceRef.current) {
+        console.log("Creating new reference tone")
+
+        try {
+          // Create oscillator
+          const oscillator = audioContext.createOscillator()
+          oscillator.type = "sine"
+          oscillator.frequency.value = NOTE_FREQUENCIES["C3"]
+
+          // Create gain node with smooth attack
+          const gainNode = audioContext.createGain()
+          const now = audioContext.currentTime
+          gainNode.gain.setValueAtTime(0, now)
+          gainNode.gain.linearRampToValueAtTime(soundVolumes.reference * masterVolume * 1.2, now + 2.0)
+
+          // Connect nodes
+          oscillator.connect(gainNode)
+          gainNode.connect(reverbRef.current)
+
+          // Start oscillator
+          oscillator.start(now)
+
+          // Store references
+          referenceSourceRef.current = oscillator
+          referenceGainRef.current = gainNode
+
+          console.log("Reference tone created successfully")
+        } catch (error) {
+          console.error("Error creating reference tone:", error)
+        }
+      } else if (referenceGainRef.current) {
+        // Just update the volume if needed
+        const now = audioContext.currentTime
+        const targetVolume = soundVolumes.reference * masterVolume * 1.2
+
+        try {
+          // Cancel any scheduled changes and set a new target
+          referenceGainRef.current.gain.cancelScheduledValues(now)
+          referenceGainRef.current.gain.setValueAtTime(referenceGainRef.current.gain.value, now)
+          referenceGainRef.current.gain.linearRampToValueAtTime(targetVolume, now + 1.0)
+        } catch (error) {
+          console.error("Error updating reference tone volume:", error)
+        }
+      }
+    } else {
+      // Stop the reference tone if it exists and the toggle is off
+      if (referenceSourceRef.current && referenceGainRef.current) {
+        console.log("Stopping reference tone")
+
+        try {
+          const now = audioContext.currentTime
+
+          // Fade out gain to avoid clicks
+          referenceGainRef.current.gain.cancelScheduledValues(now)
+          referenceGainRef.current.gain.setValueAtTime(referenceGainRef.current.gain.value, now)
+          referenceGainRef.current.gain.linearRampToValueAtTime(0, now + 1.0)
+
+          // Schedule cleanup after fade out
+          setTimeout(() => {
+            try {
+              if (referenceSourceRef.current) {
+                referenceSourceRef.current.stop()
+                referenceSourceRef.current.disconnect()
+                referenceSourceRef.current = null
+              }
+
+              if (referenceGainRef.current) {
+                referenceGainRef.current.disconnect()
+                referenceGainRef.current = null
+              }
+
+              console.log("Reference tone stopped and cleaned up")
+            } catch (error) {
+              console.error("Error cleaning up reference tone:", error)
+            }
+          }, 1100)
+        } catch (error) {
+          console.error("Error stopping reference tone:", error)
+        }
+      }
+    }
+  }, [audioContext, soundToggles.reference, soundVolumes.reference, masterVolume, isInitializedRef])
+
+  // HOUR TONE - Completely isolated in its own effect
+  useEffect(() => {
+    if (!audioContext || !reverbRef.current || !isInitializedRef.current) return
+
+    // Handle hour tone (ambient pad with reverb)
+    if (soundToggles.hour) {
+      const hourNote = getHourNote(hours)
+      const frequency = NOTE_FREQUENCIES[hourNote] || 440
+
+      // Create a new hour tone if the hour has changed or one isn't already playing
+      if (lastPlayedHourRef.current !== hours || !hourSourceRef.current) {
+        console.log(`Hour changed from ${lastPlayedHourRef.current} to ${hours}, creating new hour tone`)
+
+        // Stop the previous hour tone if it exists
+        if (hourSourceRef.current && hourGainRef.current) {
+          try {
+            const now = audioContext.currentTime
+
+            // Fade out gain to avoid clicks
+            hourGainRef.current.gain.cancelScheduledValues(now)
+            hourGainRef.current.gain.setValueAtTime(hourGainRef.current.gain.value, now)
+            hourGainRef.current.gain.linearRampToValueAtTime(0, now + 0.5)
+
+            // Schedule cleanup after fade out
+            setTimeout(() => {
+              try {
+                if (hourSourceRef.current) {
+                  hourSourceRef.current.stop()
+                  hourSourceRef.current.disconnect()
+                  hourSourceRef.current = null
+                }
+
+                if (hourGainRef.current) {
+                  hourGainRef.current.disconnect()
+                  hourGainRef.current = null
+                }
+
+                console.log("Previous hour tone stopped and cleaned up")
+              } catch (error) {
+                console.error("Error cleaning up previous hour tone:", error)
+              }
+            }, 600)
+          } catch (error) {
+            console.error("Error stopping previous hour tone:", error)
+          }
+        }
+
+        try {
+          // Create oscillator
+          const oscillator = audioContext.createOscillator()
+          oscillator.type = "sine"
+          oscillator.frequency.value = frequency
+
+          // Create gain node with smooth attack
+          const gainNode = audioContext.createGain()
+          const now = audioContext.currentTime
+          gainNode.gain.setValueAtTime(0, now)
+          gainNode.gain.linearRampToValueAtTime(soundVolumes.hour * masterVolume * 1.2, now + 2.0)
+
+          // Connect nodes
+          oscillator.connect(gainNode)
+          gainNode.connect(reverbRef.current)
+
+          // Start oscillator
+          oscillator.start(now)
+
+          // Store references
+          hourSourceRef.current = oscillator
+          hourGainRef.current = gainNode
+
+          // Update the last played hour
+          lastPlayedHourRef.current = hours
+
+          console.log("Hour tone created successfully")
+        } catch (error) {
+          console.error("Error creating hour tone:", error)
+        }
+      } else if (hourGainRef.current) {
+        // Just update the volume if needed
+        const now = audioContext.currentTime
+        const targetVolume = soundVolumes.hour * masterVolume * 1.2
+
+        try {
+          // Cancel any scheduled changes and set a new target
+          hourGainRef.current.gain.cancelScheduledValues(now)
+          hourGainRef.current.gain.setValueAtTime(hourGainRef.current.gain.value, now)
+          hourGainRef.current.gain.linearRampToValueAtTime(targetVolume, now + 1.0)
+        } catch (error) {
+          console.error("Error updating hour tone volume:", error)
+        }
+      }
+    } else {
+      // Stop the hour tone if it exists and the toggle is off
+      if (hourSourceRef.current && hourGainRef.current) {
+        console.log("Stopping hour tone")
+
+        try {
+          const now = audioContext.currentTime
+
+          // Fade out gain to avoid clicks
+          hourGainRef.current.gain.cancelScheduledValues(now)
+          hourGainRef.current.gain.setValueAtTime(hourGainRef.current.gain.value, now)
+          hourGainRef.current.gain.linearRampToValueAtTime(0, now + 1.0)
+
+          // Schedule cleanup after fade out
+          setTimeout(() => {
+            try {
+              if (hourSourceRef.current) {
+                hourSourceRef.current.stop()
+                hourSourceRef.current.disconnect()
+                hourSourceRef.current = null
+              }
+
+              if (hourGainRef.current) {
+                hourGainRef.current.disconnect()
+                hourGainRef.current = null
+              }
+
+              lastPlayedHourRef.current = null
+              console.log("Hour tone stopped and cleaned up")
+            } catch (error) {
+              console.error("Error cleaning up hour tone:", error)
+            }
+          }, 1100)
+        } catch (error) {
+          console.error("Error stopping hour tone:", error)
+        }
+      }
+    }
+  }, [audioContext, hours, soundToggles.hour, soundVolumes.hour, masterVolume, isInitializedRef])
+
+  // MINUTE AND SECOND TONES - Handled in a separate effect
+  useEffect(() => {
+    if (!audioContext || !localMasterGainRef.current || !isInitializedRef.current) return
+
+    // Ensure context is running
+    ensureAudioContextRunning()
+
+    const localMasterGain = localMasterGainRef.current
+
+    // Clear any existing second scheduler
+    if (secondSchedulerRef.current !== null) {
+      clearInterval(secondSchedulerRef.current)
+      secondSchedulerRef.current = null
+    }
+
+    // Extract tens and ones digits from minutes
+    const minuteTens = Math.floor(minutes / 10)
+    const minuteOnes = minutes % 10
+
+    // Determine which minute digit to play based on the second
+    const playTens = seconds % 2 === 0
+
+    // Play minute tones (alternating tens and ones with harp)
+    if (soundToggles.minute) {
+      if (playTens && minuteTens > 0) {
+        const minuteTensNote = getMinuteTensNote(minuteTens)
+        playNote("harp", minuteTensNote, soundVolumes.minute * masterVolume, localMasterGain, 0, 1)
+      } else if (!playTens && minuteOnes > 0) {
+        const minuteOnesNote = getMinuteOnesNote(minuteOnes)
+        playNote("harp", minuteOnesNote, soundVolumes.minute * masterVolume, localMasterGain, 0, 1)
+      }
+    }
+
+    // Schedule second tones (vibraphone)
+    if (soundToggles.second) {
+      scheduleSecondTones(
+        seconds,
+        milliseconds,
+        localMasterGain,
+        soundToggles.second,
+        soundVolumes.second * masterVolume,
+      )
+    }
+  }, [
+    audioContext,
+    minutes,
+    seconds,
+    milliseconds,
+    masterVolume,
+    soundToggles.minute,
+    soundToggles.second,
+    soundVolumes.minute,
+    soundVolumes.second,
+    ensureAudioContextRunning,
+  ])
+
   const safelyStopAndDisconnectSource = (source: OscillatorNode, gainNode?: GainNode | null) => {
     if (!audioContext) return
 
@@ -176,19 +481,21 @@ export default function AudioEngine({
       if (gainNode) {
         // Fade out to avoid clicks
         const now = audioContext.currentTime
-        gainNode.gain.linearRampToValueAtTime(0, now + 0.05)
+        gainNode.gain.cancelScheduledValues(now)
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now)
+        gainNode.gain.linearRampToValueAtTime(0, now + 0.5) // Longer fade out (500ms)
 
-        // Schedule disconnection
+        // Schedule disconnection after fade completes
         setTimeout(() => {
           try {
             gainNode.disconnect()
           } catch (e) {
             // Ignore errors from already disconnected nodes
           }
-        }, 60)
+        }, 600) // Wait longer than the fade time
       }
 
-      // Stop the source after a short delay to allow fade out
+      // Stop the source after the fade out completes
       setTimeout(() => {
         try {
           if (source.frequency) {
@@ -204,7 +511,7 @@ export default function AudioEngine({
         } catch (e) {
           // Ignore errors from already disconnected sources
         }
-      }, 60)
+      }, 600) // Match the disconnect timeout
     } catch (e) {
       console.error("Error stopping audio source:", e)
     }
@@ -288,14 +595,15 @@ export default function AudioEngine({
           oscillator.type = "sine"
           oscillator.frequency.value = frequency
 
-          // Create gain node for envelope
+          // Create gain node for envelope with smoother attack and no abrupt changes
           const gainNode = audioContext.createGain()
           gainNode.gain.setValueAtTime(0, now)
-          gainNode.gain.linearRampToValueAtTime(volume, now + 0.1)
+          gainNode.gain.linearRampToValueAtTime(volume, now + 0.5) // Slower attack to avoid clicks
 
+          // If duration is provided, create a smooth release
           if (duration) {
-            gainNode.gain.setValueAtTime(volume, now + duration - 0.2)
-            gainNode.gain.linearRampToValueAtTime(0.001, now + duration)
+            gainNode.gain.setValueAtTime(volume, now + duration - 1.0) // Start fade 1 second before end
+            gainNode.gain.linearRampToValueAtTime(0.001, now + duration) // Smooth fade out
           }
 
           // Connect nodes
@@ -360,14 +668,14 @@ export default function AudioEngine({
         const highGain = audioContext.createGain()
         highGain.gain.value = volume * 0.15 // Subtle high frequency component
 
-        // Create a master gain for the pad
+        // Create a master gain for the pad with smoother envelope
         const masterPadGain = audioContext.createGain()
         masterPadGain.gain.setValueAtTime(0, now)
-        masterPadGain.gain.linearRampToValueAtTime(volume * 1.5, now + 1.5) // Increased overall volume by 50%
+        masterPadGain.gain.linearRampToValueAtTime(volume * 1.5, now + 2.0) // Slower attack (2 seconds)
 
         if (duration) {
-          masterPadGain.gain.setValueAtTime(volume * 1.5, now + duration - 2)
-          masterPadGain.gain.linearRampToValueAtTime(0.001, now + duration)
+          masterPadGain.gain.setValueAtTime(volume * 1.5, now + duration - 3)
+          masterPadGain.gain.linearRampToValueAtTime(0.001, now + duration) // 3 second release
         }
 
         // Create a lowpass filter for warmth
@@ -683,137 +991,6 @@ export default function AudioEngine({
     }
   }
 
-  // Update sounds when time or settings change
-  useEffect(() => {
-    if (!audioContext || !localMasterGainRef.current || !reverbRef.current || !isInitializedRef.current) return
-
-    // Ensure context is running
-    ensureAudioContextRunning()
-
-    const localMasterGain = localMasterGainRef.current
-    const reverb = reverbRef.current
-
-    // Handle reference tone (C4 ambient pad with reverb) - only create once
-    if (soundToggles.reference) {
-      // Only create a new reference tone if one isn't already playing
-      if (!referenceSourceRef.current) {
-        console.log("Creating new reference tone")
-        const { source, gainNode } = playNote(
-          "ambient",
-          "C3",
-          soundVolumes.reference * masterVolume * 1.2, // Increased volume multiplier
-          reverb,
-        ) || { source: null, gainNode: null }
-
-        if (source) referenceSourceRef.current = source
-        if (gainNode) referenceGainRef.current = gainNode
-      } else if (referenceGainRef.current) {
-        // Update the volume if the reference tone is already playing
-        referenceGainRef.current.gain.linearRampToValueAtTime(
-          soundVolumes.reference * masterVolume * 1.2,
-          audioContext.currentTime + 0.1,
-        )
-      }
-    } else {
-      // Stop the reference tone if it exists and the toggle is off
-      if (referenceSourceRef.current) {
-        safelyStopAndDisconnectSource(referenceSourceRef.current, referenceGainRef.current)
-        referenceSourceRef.current = null
-        referenceGainRef.current = null
-      }
-    }
-
-    // Handle hour tone (ambient pad with reverb) - only change at new hour
-    if (soundToggles.hour) {
-      const hourNote = getHourNote(hours)
-
-      // Only create a new hour tone if the hour has changed or one isn't already playing
-      if (lastPlayedHourRef.current !== hours || !hourSourceRef.current) {
-        console.log(`Hour changed from ${lastPlayedHourRef.current} to ${hours}, creating new hour tone`)
-
-        // Stop the previous hour tone if it exists
-        if (hourSourceRef.current) {
-          safelyStopAndDisconnectSource(hourSourceRef.current, hourGainRef.current)
-          hourSourceRef.current = null
-          hourGainRef.current = null
-        }
-
-        // Create a new hour tone
-        const { source, gainNode } = playNote(
-          "ambient",
-          hourNote,
-          soundVolumes.hour * masterVolume * 1.2, // Increased volume multiplier
-          reverb,
-        ) || { source: null, gainNode: null }
-
-        if (source) hourSourceRef.current = source
-        if (gainNode) hourGainRef.current = gainNode
-
-        // Update the last played hour
-        lastPlayedHourRef.current = hours
-      } else if (hourGainRef.current) {
-        // Update the volume if the hour tone is already playing
-        hourGainRef.current.gain.linearRampToValueAtTime(
-          soundVolumes.hour * masterVolume * 1.2,
-          audioContext.currentTime + 0.1,
-        )
-      }
-    } else {
-      // Stop the hour tone if it exists and the toggle is off
-      if (hourSourceRef.current) {
-        safelyStopAndDisconnectSource(hourSourceRef.current, hourGainRef.current)
-        hourSourceRef.current = null
-        hourGainRef.current = null
-        lastPlayedHourRef.current = null
-      }
-    }
-
-    // Clear any existing second scheduler
-    if (secondSchedulerRef.current !== null) {
-      clearInterval(secondSchedulerRef.current)
-      secondSchedulerRef.current = null
-    }
-
-    // Extract tens and ones digits from minutes
-    const minuteTens = Math.floor(minutes / 10)
-    const minuteOnes = minutes % 10
-
-    // Determine which minute digit to play based on the second
-    const playTens = seconds % 2 === 0
-
-    // Play minute tones (alternating tens and ones with harp)
-    if (soundToggles.minute) {
-      if (playTens && minuteTens > 0) {
-        const minuteTensNote = getMinuteTensNote(minuteTens)
-        playNote("harp", minuteTensNote, soundVolumes.minute * masterVolume, localMasterGain, 0, 1)
-      } else if (!playTens && minuteOnes > 0) {
-        const minuteOnesNote = getMinuteOnesNote(minuteOnes)
-        playNote("harp", minuteOnesNote, soundVolumes.minute * masterVolume, localMasterGain, 0, 1)
-      }
-    }
-
-    // Schedule second tones (vibraphone)
-    if (soundToggles.second) {
-      scheduleSecondTones(
-        seconds,
-        milliseconds,
-        localMasterGain,
-        soundToggles.second,
-        soundVolumes.second * masterVolume,
-      )
-    }
-  }, [
-    audioContext,
-    hours,
-    minutes,
-    seconds,
-    milliseconds,
-    masterVolume,
-    soundToggles,
-    soundVolumes,
-    ensureAudioContextRunning,
-  ])
-
   // Schedule second tones to alternate quickly
   const scheduleSecondTones = (
     currentSecond: number,
@@ -838,6 +1015,7 @@ export default function AudioEngine({
     const quarterSecond = Math.floor(msInSecond / 250)
 
     // Schedule the first tone immediately
+    // MODIFIED: Reversed the order - tens plays first, then ones
     const isFirstTens = quarterSecond === 0 || quarterSecond === 2
     if (isFirstTens && secondTens > 0) {
       const secondTensNote = getSecondTensNote(secondTens)
@@ -869,6 +1047,7 @@ export default function AudioEngine({
       const secTens = Math.floor(currentSec / 10)
       const secOnes = currentSec % 10
 
+      // MODIFIED: Reversed the order - tens plays first, then ones
       // Determine if we should play tens or ones
       const isTens = currentQuarter === 0 || currentQuarter === 2
 

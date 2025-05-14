@@ -1,30 +1,144 @@
-# Song clock app
-
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
-
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/simon-miners-projects/v0-song-clock-app)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/11oWqfO4lKd)
+# ![Song Clock](https://hebbkx1anhila5yf.public.blob.vercel-storage.com/songclock-logo-dark-ZJjlWcJSEynWrFNMGu22pRUZcFNgAM.png)
 
 ## Overview
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+Song Clock is an innovative web application that transforms time into music, allowing users to "hear" the current time through musical intervals and patterns. This unique approach to timekeeping serves multiple purposes:
 
-## Deployment
+- **Ear Training for Musicians**: Practice recognizing musical intervals in a practical context
+- **Accessible Timekeeping**: Provide an auditory representation of time for those with visual impairments
+- **Music Education**: Learn about musical intervals and their relationships
+- **Mindfulness**: Experience time in a new, more engaging way
 
-Your project is live at:
+## Features
 
-**[https://vercel.com/simon-miners-projects/v0-song-clock-app](https://vercel.com/simon-miners-projects/v0-song-clock-app)**
+- **Musical Time Representation**: Hours, minutes, and seconds are represented by distinct musical patterns
+- **Interactive Visualization**: Visual representation of time through an analog clock and musical notation
+- **Customizable Sound Settings**: Adjust volume levels for different time components
+- **Manual Time Control**: Set specific times to practice hearing different intervals
+- **Responsive Design**: Works on desktop and mobile devices
+- **Keyboard Shortcuts**: Quick access to main functions
+- **Accessibility**: Designed with screen reader support and WCAG compliance
 
-## Build your app
+## Technology Stack
 
-Continue building your app on:
+- **Framework**: Next.js 14
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Music Notation**: VexFlow
+- **Audio**: Web Audio API
+- **Analytics**: Google Analytics
 
-**[https://v0.dev/chat/projects/11oWqfO4lKd](https://v0.dev/chat/projects/11oWqfO4lKd)**
+## Development Environment Setup
 
-## How It Works
+### Prerequisites
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+- Node.js (v18 or later)
+- npm (v8 or later) or yarn (v1.22 or later)
+- Git
+
+### Installation
+
+1. Clone the repository:
+   \`\`\`bash
+   git clone https://github.com/yourusername/song-clock.git
+   cd song-clock
+   \`\`\`
+
+2. Install dependencies:
+   \`\`\`bash
+   npm install
+   # or
+   yarn install
+   \`\`\`
+
+3. Start the development server:
+   \`\`\`bash
+   npm run dev
+   # or
+   yarn dev
+   \`\`\`
+
+4. Open your browser and navigate to [http://localhost:3000](http://localhost:3000)
+
+### Environment Variables
+
+Create a `.env.local` file in the root directory with the following variables (if needed):
+
+\`\`\`
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-YNK87PBY80
+\`\`\`
+
+## Build and Deployment
+
+### Building for Production
+
+\`\`\`bash
+npm run build
+# or
+yarn build
+\`\`\`
+
+### Running the Production Build Locally
+
+\`\`\`bash
+npm run start
+# or
+yarn start
+\`\`\`
+
+### Deployment
+
+The application is optimized for deployment on Vercel:
+
+1. Push your code to a GitHub repository
+2. Import the project in Vercel
+3. Configure environment variables if needed
+4. Deploy
+
+For other platforms, follow their respective deployment guides for Next.js applications.
+
+## Project Structure
+
+\`\`\`
+song-clock/
+├── app/                  # Next.js app directory
+│   ├── layout.tsx        # Root layout component
+│   ├── page.tsx          # Main application page
+│   └── providers.tsx     # Context providers
+├── components/           # React components
+│   ├── analog-clock.tsx  # Analog clock visualization
+│   ├── audio-engine.tsx  # Audio generation system
+│   ├── musical-staff.tsx # Musical notation display
+│   └── ...               # Other components
+├── public/               # Static assets
+│   └── images/           # Image assets
+├── utils/                # Utility functions
+│   └── analytics.ts      # Analytics tracking
+└── ...                   # Configuration files
+\`\`\`
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- [VexFlow](https://github.com/0xfe/vexflow) for music notation rendering
+- [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) for audio synthesis
+- [Next.js](https://nextjs.org/) for the application framework
+- [Tailwind CSS](https://tailwindcss.com/) for styling
+- [Vercel](https://vercel.com/) for hosting and deployment
+
+---
+
+Developed by [Pedal Point Solutions](https://pedalpoint.com)
