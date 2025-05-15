@@ -40,8 +40,8 @@ Song Clock is an innovative web application that transforms time into music, all
 
 1. Clone the repository:
 ```
-git clone https://github.com/yourusername/songclock.git
-cd songclock
+git clone https://github.com/yourusername/song-clock.git
+cd song-clock
 ```
 
 2. Install dependencies:
@@ -101,7 +101,7 @@ For other platforms, follow their respective deployment guides for Next.js appli
 ## Project Structure
 
 ```
-songclock/
+song-clock/
 ├── app/                  # Next.js app directory
 │   ├── layout.tsx        # Root layout component
 │   ├── page.tsx          # Main application page
@@ -138,7 +138,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) for audio synthesis
 - [Next.js](https://nextjs.org/) for the application framework
 - [Tailwind CSS](https://tailwindcss.com/) for styling
-- [v0](https://v0.dev/) for AI-assisted development
 - [Vercel](https://vercel.com/) for hosting and deployment
 
 ---
