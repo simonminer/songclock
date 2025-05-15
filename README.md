@@ -39,24 +39,25 @@ Song Clock is an innovative web application that transforms time into music, all
 ### Installation
 
 1. Clone the repository:
-   \`\`\`bash
-   git clone https://github.com/yourusername/song-clock.git
-   cd song-clock
-   \`\`\`
+```
+git clone https://github.com/yourusername/song-clock.git
+cd song-clock
+```
 
 2. Install dependencies:
-   \`\`\`bash
-   npm install
-   # or
-   yarn install
-   \`\`\`
+```
+npm install
+# or
+yarn install
+```
 
 3. Start the development server:
-   \`\`\`bash
-   npm run dev
-   # or
-   yarn dev
-   \`\`\`
+
+```
+npm run dev
+# or
+yarn dev
+```
 
 4. Open your browser and navigate to [http://localhost:3000](http://localhost:3000)
 
@@ -64,27 +65,27 @@ Song Clock is an innovative web application that transforms time into music, all
 
 Create a `.env.local` file in the root directory with the following variables (if needed):
 
-\`\`\`
+```
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-YNK87PBY80
-\`\`\`
+```
 
 ## Build and Deployment
 
 ### Building for Production
 
-\`\`\`bash
+```
 npm run build
 # or
 yarn build
-\`\`\`
+```
 
 ### Running the Production Build Locally
 
-\`\`\`bash
+```
 npm run start
 # or
 yarn start
-\`\`\`
+```
 
 ### Deployment
 
@@ -99,7 +100,7 @@ For other platforms, follow their respective deployment guides for Next.js appli
 
 ## Project Structure
 
-\`\`\`
+```
 song-clock/
 ├── app/                  # Next.js app directory
 │   ├── layout.tsx        # Root layout component
@@ -115,7 +116,7 @@ song-clock/
 ├── utils/                # Utility functions
 │   └── analytics.ts      # Analytics tracking
 └── ...                   # Configuration files
-\`\`\`
+```
 
 ## Contributing
 
