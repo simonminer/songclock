@@ -387,17 +387,20 @@ export default function SongClock() {
           {announcement}
         </div>
 
-        <header className="border-b border-white/10 bg-gray-800/50 p-4">
+        <header className="border-b border-white/10 bg-[#1a202c] p-4">
           <div className="flex w-full flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
             <div className="flex h-full items-center justify-center sm:justify-start">
-              <Image
-                src="/images/songclock-logo-light.png"
-                alt="Song Clock - Listen to the time."
-                width={300}
-                height={70}
-                className="h-auto w-auto max-h-16"
-                priority
-              />
+              <picture>
+                <source srcSet="/images/songclock-logo-dark-bg.webp" type="image/webp" />
+                <Image
+                  src="/images/songclock-logo-dark-bg.png"
+                  alt="Song Clock - Listen to the time."
+                  width={400}
+                  height={100}
+                  className="h-auto w-auto max-h-16"
+                  priority
+                />
+              </picture>
             </div>
             <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3">
               <Button
