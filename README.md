@@ -1,5 +1,7 @@
 # ![Song Clock](https://hebbkx1anhila5yf.public.blob.vercel-storage.com/songclock-logo-dark-ZJjlWcJSEynWrFNMGu22pRUZcFNgAM.png)
 
+**[Try it live at songclock.app →](https://songclock.app)**
+
 ## Overview
 
 Song Clock is an innovative web application that transforms time into music, allowing users to "hear" the current time through musical intervals and patterns. This unique approach to timekeeping serves multiple purposes:
@@ -39,25 +41,25 @@ Song Clock is an innovative web application that transforms time into music, all
 ### Installation
 
 1. Clone the repository:
-```
-git clone https://github.com/yourusername/song-clock.git
-cd song-clock
-```
+\`\`\`
+git clone https://github.com/yourusername/songclock.git
+cd songclock
+\`\`\`
 
 2. Install dependencies:
-```
+\`\`\`
 npm install
 # or
 yarn install
-```
+\`\`\`
 
 3. Start the development server:
 
-```
+\`\`\`
 npm run dev
 # or
 yarn dev
-```
+\`\`\`
 
 4. Open your browser and navigate to [http://localhost:3000](http://localhost:3000)
 
@@ -65,27 +67,27 @@ yarn dev
 
 Create a `.env.local` file in the root directory with the following variables (if needed):
 
-```
+\`\`\`
 NEXT_PUBLIC_GA_MEASUREMENT_ID=G-YNK87PBY80
-```
+\`\`\`
 
 ## Build and Deployment
 
 ### Building for Production
 
-```
+\`\`\`
 npm run build
 # or
 yarn build
-```
+\`\`\`
 
 ### Running the Production Build Locally
 
-```
+\`\`\`
 npm run start
 # or
 yarn start
-```
+\`\`\`
 
 ### Deployment
 
@@ -100,8 +102,8 @@ For other platforms, follow their respective deployment guides for Next.js appli
 
 ## Project Structure
 
-```
-song-clock/
+\`\`\`
+songclock/
 ├── app/                  # Next.js app directory
 │   ├── layout.tsx        # Root layout component
 │   ├── page.tsx          # Main application page
@@ -116,7 +118,7 @@ song-clock/
 ├── utils/                # Utility functions
 │   └── analytics.ts      # Analytics tracking
 └── ...                   # Configuration files
-```
+\`\`\`
 
 ## Contributing
 
@@ -138,6 +140,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) for audio synthesis
 - [Next.js](https://nextjs.org/) for the application framework
 - [Tailwind CSS](https://tailwindcss.com/) for styling
+* [v0](https://v0.dev) for AI-assisted development
 - [Vercel](https://vercel.com/) for hosting and deployment
 
 ---

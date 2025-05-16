@@ -65,7 +65,7 @@ export function AudioContextProvider({ children }: AudioContextProviderProps) {
               console.warn("Failed to resume AudioContext:", err)
             })
           }
-        }, 1000) as unknown as number
+        }, 200) as unknown as number // Check more frequently (200ms)
       } catch (error) {
         console.error("Error initializing AudioContext:", error)
       }
