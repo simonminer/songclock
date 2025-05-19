@@ -25,37 +25,38 @@ const COLORS = {
   default: "rgba(255, 255, 255, 1)", // White for staff, clefs, etc. (full opacity)
 }
 
-// Note name mapping constants
+// Note name mapping constants - transposed up one octave for hour notes
 const HOUR_NOTES = [
-  "C3", // 12 o'clock
-  "C3", // 1 o'clock
-  "D3", // 2 o'clock
-  "E3", // 3 o'clock
-  "F3", // 4 o'clock
-  "G3", // 5 o'clock
-  "A3", // 6 o'clock
-  "B3", // 7 o'clock
-  "C4", // 8 o'clock
-  "D4", // 9 o'clock
-  "E4", // 10 o'clock
-  "F4", // 11 o'clock
-  "G4", // 12 o'clock
+  "C4", // 12 o'clock (was C3)
+  "C4", // 1 o'clock (was C3)
+  "D4", // 2 o'clock (was D3)
+  "E4", // 3 o'clock (was E3)
+  "F4", // 4 o'clock (was F3)
+  "G4", // 5 o'clock (was G3)
+  "A4", // 6 o'clock (was A3)
+  "B4", // 7 o'clock (was B3)
+  "C5", // 8 o'clock (was C4)
+  "D5", // 9 o'clock (was D4)
+  "E5", // 10 o'clock (was E4)
+  "F5", // 11 o'clock (was F4)
+  "G5", // 12 o'clock (was G4)
 ]
 
-const HOUR_KEYS_BASS = [
-  "c/3", // 12 o'clock (C3)
-  "c/3", // 1 o'clock (C3)
-  "d/3", // 2 o'clock (D3)
-  "e/3", // 3 o'clock (E3)
-  "f/3", // 4 o'clock (F3)
-  "g/3", // 5 o'clock (G3)
-  "a/3", // 6 o'clock (A3)
-  "b/3", // 7 o'clock (B3)
-  "c/4", // 8 o'clock (C4)
-  "d/4", // 9 o'clock (D4)
-  "e/4", // 10 o'clock (E4)
-  "f/4", // 11 o'clock (F4)
-  "g/4", // 12 o'clock (G4)
+// VexFlow key notation for hour notes (transposed up one octave)
+const HOUR_KEYS = [
+  "c/4", // 12 o'clock (was c/3)
+  "c/4", // 1 o'clock (was c/3)
+  "d/4", // 2 o'clock (was d/3)
+  "e/4", // 3 o'clock (was e/3)
+  "f/4", // 4 o'clock (was f/3)
+  "g/4", // 5 o'clock (was g/3)
+  "a/4", // 6 o'clock (was a/3)
+  "b/4", // 7 o'clock (was b/3)
+  "c/5", // 8 o'clock (was c/4)
+  "d/5", // 9 o'clock (was d/4)
+  "e/5", // 10 o'clock (was e/4)
+  "f/5", // 11 o'clock (was f/4)
+  "g/5", // 12 o'clock (was g/4)
 ]
 
 const MINUTE_TENS_NOTES = ["", "C4", "D4", "E4", "F4", "G4"]
@@ -139,8 +140,8 @@ export default function Score({ hours, minutes, seconds, isPlaying, soundToggles
   }
 
   // Hour note helpers
-  const getHourNoteKeyBass = (hour: number): string => {
-    return HOUR_KEYS_BASS[hour === 0 ? 12 : hour]
+  const getHourNoteKey = (hour: number): string => {
+    return HOUR_KEYS[hour === 0 ? 12 : hour]
   }
 
   const getHourNoteName = (hour: number): string => {
@@ -196,7 +197,7 @@ export default function Score({ hours, minutes, seconds, isPlaying, soundToggles
     const minuteStaveY = 140
     const hourStaveY = 240
 
-    // Create three staves
+    // Create three staves - all with treble clef now
     const secondStave = new Stave(staveX, secondStaveY, staveWidth)
     secondStave.addClef("treble").addTimeSignature("4/4")
     secondStave.setStyle({ strokeStyle: COLORS.default, fillStyle: COLORS.default })
@@ -205,8 +206,9 @@ export default function Score({ hours, minutes, seconds, isPlaying, soundToggles
     minuteStave.addClef("treble").addTimeSignature("4/4")
     minuteStave.setStyle({ strokeStyle: COLORS.default, fillStyle: COLORS.default })
 
+    // Changed from bass to treble clef for hour stave
     const hourStave = new Stave(staveX, hourStaveY, staveWidth)
-    hourStave.addClef("bass").addTimeSignature("4/4")
+    hourStave.addClef("treble").addTimeSignature("4/4")
     hourStave.setStyle({ strokeStyle: COLORS.default, fillStyle: COLORS.default })
 
     // Draw the staves
@@ -259,7 +261,8 @@ export default function Score({ hours, minutes, seconds, isPlaying, soundToggles
     context.fillStyle = COLORS.reference
     context.font = "14px Arial"
     if (soundToggles.reference) {
-      context.fillText(`Reference - C3`, staveX + 220, hourLabelY)
+      // Updated reference note to C4 (was C3)
+      context.fillText(`Reference - C4`, staveX + 220, hourLabelY)
     } else {
       context.fillText("Reference", staveX + 220, hourLabelY)
     }
@@ -268,19 +271,19 @@ export default function Score({ hours, minutes, seconds, isPlaying, soundToggles
 
   // Create hour notes
   const createHourNotes = (hourNoteKey: string) => {
-    // Bass clef notes - reference and hour (transposed down an octave)
-    // Reference note as a white whole note (C3)
+    // Treble clef notes - reference and hour (transposed up an octave)
+    // Reference note as a white whole note (C4 now, was C3)
     const referenceNote = new StaveNote({
-      clef: "bass",
-      keys: ["c/3"], // C3 in bass clef (transposed down)
+      clef: "treble", // Changed from bass to treble
+      keys: ["c/4"], // C4 in treble clef (was C3 in bass clef)
       duration: "w",
     })
     referenceNote.setStyle({ fillStyle: COLORS.reference, strokeStyle: COLORS.reference })
 
     // Hour note as a red whole note at the appropriate interval
     const hourNote = new StaveNote({
-      clef: "bass",
-      keys: [hourNoteKey], // Based on C3 now
+      clef: "treble", // Changed from bass to treble
+      keys: [hourNoteKey], // Based on C4 now (was C3)
       duration: "w",
     })
     hourNote.setStyle({ fillStyle: COLORS.hour, strokeStyle: COLORS.hour })
@@ -413,7 +416,7 @@ export default function Score({ hours, minutes, seconds, isPlaying, soundToggles
         const hourNotes = []
 
         // Get hour note key
-        const hourNoteKey = getHourNoteKeyBass(hours)
+        const hourNoteKey = getHourNoteKey(hours)
         const { referenceNote, hourNote } = createHourNotes(hourNoteKey)
 
         // Standard handling for all hours
@@ -428,8 +431,8 @@ export default function Score({ hours, minutes, seconds, isPlaying, soundToggles
         } else {
           // Neither reference nor hour is enabled, use a whole rest
           const rest = new StaveNote({
-            clef: "bass",
-            keys: ["d/3"],
+            clef: "treble", // Changed from bass to treble
+            keys: ["d/4"], // Changed from d/3 to d/4
             duration: "wr",
           })
           rest.setStyle({ fillStyle: COLORS.default, strokeStyle: COLORS.default })

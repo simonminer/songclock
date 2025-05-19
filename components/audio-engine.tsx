@@ -161,14 +161,14 @@ export default function AudioEngine({
 
       // Create all oscillators and gain nodes once
 
-      // 1. Reference tone (C3)
+      // 1. Reference tone (C4 now, was C3)
       const referenceGain = createGain(audioContext, 0, localMasterGain)
-      const referenceOsc = createOscillator(audioContext, "sine", getNoteFrequency("C3"), referenceGain)
+      const referenceOsc = createOscillator(audioContext, "sine", getNoteFrequency("C4"), referenceGain)
       referenceOscillatorSetup.current = { oscillator: referenceOsc, gain: referenceGain }
 
       // 2. Hour tone (varies based on hour)
       const hourGain = createGain(audioContext, 0, localMasterGain)
-      const hourOsc = createOscillator(audioContext, "sine", getNoteFrequency("C3"), hourGain)
+      const hourOsc = createOscillator(audioContext, "sine", getNoteFrequency("C4"), hourGain)
       hourOscillatorSetup.current = { oscillator: hourOsc, gain: hourGain }
 
       // 3. Minute tens oscillator

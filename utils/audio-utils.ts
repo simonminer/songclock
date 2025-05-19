@@ -39,20 +39,21 @@ export const getNoteFrequency = (noteName: string): number => {
 }
 
 // Mapping tables for different time components to notes
+// Transposed hour notes up one octave (from C3-G4 to C4-G5)
 const HOUR_NOTES = [
-  "C3", // 12 o'clock
-  "C3", // 1 o'clock
-  "D3", // 2 o'clock
-  "E3", // 3 o'clock
-  "F3", // 4 o'clock
-  "G3", // 5 o'clock
-  "A3", // 6 o'clock
-  "B3", // 7 o'clock
-  "C4", // 8 o'clock
-  "D4", // 9 o'clock
-  "E4", // 10 o'clock
-  "F4", // 11 o'clock
-  "G4", // 12 o'clock
+  "C4", // 12 o'clock (was C3)
+  "C4", // 1 o'clock (was C3)
+  "D4", // 2 o'clock (was D3)
+  "E4", // 3 o'clock (was E3)
+  "F4", // 4 o'clock (was F3)
+  "G4", // 5 o'clock (was G3)
+  "A4", // 6 o'clock (was A3)
+  "B4", // 7 o'clock (was B3)
+  "C5", // 8 o'clock (was C4)
+  "D5", // 9 o'clock (was D4)
+  "E5", // 10 o'clock (was E4)
+  "F5", // 11 o'clock (was F4)
+  "G5", // 12 o'clock (was G4)
 ]
 
 const MINUTE_TENS_NOTES = ["C4", "C4", "D4", "E4", "F4", "G4"]

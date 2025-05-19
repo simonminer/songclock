@@ -12,19 +12,20 @@ interface IntervalLegendProps {
 export default function IntervalLegend({ alwaysExpanded = false }: IntervalLegendProps) {
   const [isOpen, setIsOpen] = useState(alwaysExpanded)
 
+  // Updated hour intervals to reflect the transposed notes (C4-G5 instead of C3-G4)
   const hourIntervals = [
-    { hour: 1, interval: "Unison (C3)", description: "Same as reference tone" },
-    { hour: 2, interval: "Major 2nd (D3)", description: "Whole step up" },
-    { hour: 3, interval: "Major 3rd (E3)", description: "Bright, major quality" },
-    { hour: 4, interval: "Perfect 4th (F3)", description: "Stable, foundational" },
-    { hour: 5, interval: "Perfect 5th (G3)", description: "Strong, consonant" },
-    { hour: 6, interval: "Major 6th (A3)", description: "Harmonious, sweet" },
-    { hour: 7, interval: "Major 7th (B3)", description: "Tense, leading tone" },
-    { hour: 8, interval: "Octave (C4)", description: "Same note, higher register" },
-    { hour: 9, interval: "Major 9th (D4)", description: "Compound 2nd" },
-    { hour: 10, interval: "Major 10th (E4)", description: "Compound 3rd" },
-    { hour: 11, interval: "Perfect 11th (F4)", description: "Compound 4th" },
-    { hour: 12, interval: "Perfect 12th (G4)", description: "Compound 5th" },
+    { hour: 1, interval: "Unison (C4)", description: "Same as reference tone" },
+    { hour: 2, interval: "Major 2nd (D4)", description: "Whole step up" },
+    { hour: 3, interval: "Major 3rd (E4)", description: "Bright, major quality" },
+    { hour: 4, interval: "Perfect 4th (F4)", description: "Stable, foundational" },
+    { hour: 5, interval: "Perfect 5th (G4)", description: "Strong, consonant" },
+    { hour: 6, interval: "Major 6th (A4)", description: "Harmonious, sweet" },
+    { hour: 7, interval: "Major 7th (B4)", description: "Tense, leading tone" },
+    { hour: 8, interval: "Octave (C5)", description: "Same note, higher register" },
+    { hour: 9, interval: "Major 9th (D5)", description: "Compound 2nd" },
+    { hour: 10, interval: "Major 10th (E5)", description: "Compound 3rd" },
+    { hour: 11, interval: "Perfect 11th (F5)", description: "Compound 4th" },
+    { hour: 12, interval: "Perfect 12th (G5)", description: "Compound 5th" },
   ]
 
   const minuteIntervals = [
@@ -98,7 +99,7 @@ export default function IntervalLegend({ alwaysExpanded = false }: IntervalLegen
 
           <TabsContent value="hours" className="mt-2">
             <p className="mb-2 text-sm text-gray-300">
-              Each hour is represented as a specific musical interval relative to the reference tone (C3). The hour tone
+              Each hour is represented as a specific musical interval relative to the reference tone (C4). The hour tone
               plays continuously as an ambient pad with reverb.
             </p>
             <div className="overflow-x-auto">
