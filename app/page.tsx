@@ -7,7 +7,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import AnalogClock from "@/components/analog-clock"
 import AudioEngine from "@/components/audio-engine"
-import MusicalStaff from "@/components/musical-staff"
+import Score from "@/components/score" // Updated from MusicalStaff to Score
 import SettingsModal from "@/components/settings-modal"
 import HelpModal from "@/components/help-modal"
 import { useAudioContext } from "@/components/audio-context-provider"
@@ -44,7 +44,7 @@ export default function SongClock() {
   })
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
-  const [showMusicStaff, setShowMusicStaff] = useState(false)
+  const [showScore, setShowScore] = useState(false) // Updated from showMusicStaff to showScore
   const [announcement, setAnnouncement] = useState("")
   const [hasVisitedBefore, setHasVisitedBefore] = useState(true)
 
@@ -58,7 +58,7 @@ export default function SongClock() {
   const settingsButtonRef = useRef<HTMLButtonElement>(null)
   const helpButtonRef = useRef<HTMLButtonElement>(null)
   const playButtonRef = useRef<HTMLButtonElement>(null)
-  const staffToggleButtonRef = useRef<HTMLButtonElement>(null)
+  const scoreToggleButtonRef = useRef<HTMLButtonElement>(null) // Updated from staffToggleButtonRef to scoreToggleButtonRef
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -87,17 +87,17 @@ export default function SongClock() {
         trackKeyboardShortcut(",", "Open Settings")
       }
 
-      // 's' to toggle music staff
+      // 's' to toggle score
       if (e.key === "s" || e.key === "S") {
         e.preventDefault()
-        setShowMusicStaff((prev) => !prev)
-        trackKeyboardShortcut("s", showMusicStaff ? "Hide Score" : "Show Score")
+        setShowScore((prev) => !prev)
+        trackKeyboardShortcut("s", showScore ? "Hide Score" : "Show Score")
       }
     }
 
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [isSettingsOpen, isHelpOpen, isPlaying, showMusicStaff]) // Added showMusicStaff to the dependency array
+  }, [isSettingsOpen, isHelpOpen, isPlaying, showScore]) // Updated from showMusicStaff to showScore
 
   // Update time automatically
   useEffect(() => {
@@ -161,15 +161,16 @@ export default function SongClock() {
     setAnnouncement(newIsPlaying ? "Sound on" : "Sound off")
   }
 
-  const toggleMusicStaff = () => {
-    const newShowMusicStaff = !showMusicStaff
-    setShowMusicStaff(newShowMusicStaff)
+  const toggleScore = () => {
+    // Updated from toggleMusicStaff to toggleScore
+    const newShowScore = !showScore // Updated from newShowMusicStaff to newShowScore
+    setShowScore(newShowScore) // Updated from setShowMusicStaff to setShowScore
 
     // Track the event
-    trackButtonClick("Show/Hide Score", newShowMusicStaff ? "Show" : "Hide")
+    trackButtonClick("Show/Hide Score", newShowScore ? "Show" : "Hide")
 
     // Announce state change to screen readers
-    setAnnouncement(newShowMusicStaff ? "Score on" : "Score off")
+    setAnnouncement(newShowScore ? "Score on" : "Score off")
   }
 
   const handleMasterVolumeChange = (value: number) => {
@@ -454,7 +455,7 @@ export default function SongClock() {
         </header>
 
         <main className="flex-1 w-full py-5">
-          {/* Main Content Section - Clock and Musical Staff */}
+          {/* Main Content Section - Clock and Score */}
           <div className="flex flex-col gap-5">
             {/* Clock Section - Converted to a button */}
             <button
@@ -472,17 +473,17 @@ export default function SongClock() {
               </div>
             </button>
 
-            {/* Staff Toggle Button */}
+            {/* Score Toggle Button */}
             <div className="mx-4 flex justify-center w-auto">
               <Button
-                ref={staffToggleButtonRef}
-                onClick={toggleMusicStaff}
+                ref={scoreToggleButtonRef}
+                onClick={toggleScore}
                 variant="outline"
                 size="lg"
                 className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                aria-label={showMusicStaff ? "Hide score" : "Show score"}
+                aria-label={showScore ? "Hide score" : "Show score"}
               >
-                {showMusicStaff ? (
+                {showScore ? (
                   <>
                     <EyeOff className="mr-2 h-5 w-5" />
                     Hide Score
@@ -496,16 +497,15 @@ export default function SongClock() {
               </Button>
             </div>
 
-            {/* Musical Staff Section - Conditionally rendered */}
-            {showMusicStaff && (
+            {/* Score Section - Conditionally rendered */}
+            {showScore && (
               <div className="mx-4 flex items-center justify-center w-auto">
-                <MusicalStaff
+                <Score
                   hours={displayHours}
                   minutes={displayMinutes}
                   seconds={displaySeconds}
                   isPlaying={isPlaying}
                   soundToggles={soundToggles}
-                  soundVolumes={soundVolumes}
                 />
               </div>
             )}

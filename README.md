@@ -42,7 +42,7 @@ Song Clock is an innovative web application that transforms time into music, all
 
 1. Clone the repository:
 \`\`\`
-git clone https://github.com/yourusername/songclock.git
+git clone https://github.com/simonminer/songclock.git
 cd songclock
 \`\`\`
 
@@ -111,12 +111,13 @@ songclock/
 ├── components/           # React components
 │   ├── analog-clock.tsx  # Analog clock visualization
 │   ├── audio-engine.tsx  # Audio generation system
-│   ├── musical-staff.tsx # Musical notation display
+│   ├── score.tsx         # Musical notation display
 │   └── ...               # Other components
 ├── public/               # Static assets
 │   └── images/           # Image assets
 ├── utils/                # Utility functions
 │   └── analytics.ts      # Analytics tracking
+│   └── audio-utils.ts    # Audio utility functions
 └── ...                   # Configuration files
 \`\`\`
 

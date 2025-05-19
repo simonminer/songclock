@@ -111,7 +111,7 @@ export default function HelpModal({ isOpen, onClose, customTitle }: HelpModalPro
       >
         <div className="mb-4 flex items-center justify-between">
           <h1 id="help-title" className="text-2xl font-bold" ref={headingRef} tabIndex={-1}>
-            Welcome to Song Clock
+            {customTitle || "Welcome to Song Clock"}
           </h1>
           <Button
             ref={initialFocusRef}
